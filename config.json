@@ -1,0 +1,43 @@
+{
+  "resolution": [
+    1920,
+    1080
+  ],
+  "capture": {
+    "backend": "spectacle",
+    "output": "last_screen.png",
+    "timeout_seconds": 15
+  },
+  "input": {
+    "backend": "ydotool",
+    "enabled": false,
+    "click_button": "0xC0",
+    "min_seconds_between_clicks": 2.0
+  },
+  "steam": {
+    "appid": "",
+    "launch_command": "",
+    "wait_after_launch_seconds": 45
+  },
+  "ollama": {
+    "enabled": true,
+    "url": "http://127.0.0.1:11434/api/chat",
+    "model": "qwen3.5:4b",
+    "timeout_seconds": 720
+  },
+  "agent": {
+    "dry_run": true,
+    "loop_interval_seconds": 3,
+    "max_consecutive_errors": 5,
+    "template_threshold": 0.91,
+    "min_confidence_for_action": 0.94,
+    "max_actions_per_session": 20
+  },
+  "templates": {
+    "main_menu": "templates/main_menu.png",
+    "shipments_screen": "templates/shipments_screen.png",
+    "battle_screen": "templates/battle_screen.png",
+    "victory": "templates/victory.png",
+    "defeat": "templates/defeat.png"
+  }
+}
