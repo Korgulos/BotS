@@ -138,3 +138,44 @@ To enable an action, edit its `enabled` and `requires_manual_review` columns onl
 - Unknown screen, missing template, low match score, or disabled input means no click.
 - A generic screenshot classifier is not enough to safely automate purchases, premium currency, crystals, account settings, or irreversible actions. Keep those actions manual.
 - The agent does not bypass game protections or guarantee that automation complies with game/platform rules.
+
+## Action verification and regression tests
+
+The current agent captures the named X11/XWayland game window using `wmctrl`,
+`xwd` and ImageMagick (`magick`). Live input also requires `xprop` to verify
+`_NET_ACTIVE_WINDOW`. The legacy `capture.backend` setting is not used by this
+implementation. Use `python capture_test_x11.py` to test the same capture path
+as the agent. Keep the game visible and active; the agent does not focus it.
+
+Before each live click, the agent captures another frame, checks the detected
+state and button again, adds the current window origin to the button coordinates,
+and checks window identity, geometry and focus immediately before input. Both
+frames must be younger than `agent.max_frame_age_seconds` (default 30 seconds),
+including time spent waiting for the model and input rate limit. A slower model
+response causes the action to be skipped. Adjust this limit deliberately for
+stationary screens; increasing it permits older model observations.
+
+Every executable click rule must define `postcondition_state`. After dispatch,
+the agent sends no more clicks until cooldown finishes and the expected state
+is observed. `agent.postcondition_timeout_seconds` (default 30 seconds) begins
+at the end of cooldown. If confirmation fails or input dispatch raises an error,
+actions halt until the agent is restarted after manual inspection. There is no
+automatic click retry. A same-state postcondition confirms only screen presence,
+not that an in-place resource update succeeded.
+
+Startup reports missing or unreadable templates. Live mode refuses to start
+until these are supplied or the unused rules are disabled/removed. The included
+configuration maps the existing shipments and resources action images; battle,
+victory and defeat state images still need to be captured or those states disabled.
+Dry-run and input defaults remain unchanged.
+
+Run the offline tests (no game, model server, or real input required):
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+Tests use temporary SQLite databases, mocked input/window APIs, and a saved
+synthetic screenshot replay. They cover coordinate conversion, stale frames,
+changed targets/screens, pending action confirmation and timeout, input failures,
+first-run seed rollback/retry, template mappings and runner integration.

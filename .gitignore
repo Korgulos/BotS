@@ -1,0 +1,30 @@
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local runtime database (keep schema and seed SQL in Git)
+/agent.sqlite3
+/agent.sqlite3-*
+/agent.sqlite3-journal
+
+# Runtime logs and observations
+/logs/*
+!/logs/.gitkeep
+
+# Temporary captures and local archive
+/last_screen.png
+*.xwd
+/files.zip
+
+# Local secrets
+.env
+.env.*
+!.env.example

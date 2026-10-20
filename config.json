@@ -31,13 +31,17 @@
     "max_consecutive_errors": 5,
     "template_threshold": 0.91,
     "min_confidence_for_action": 0.94,
-    "max_actions_per_session": 20
+    "max_actions_per_session": 20,
+    "max_frame_age_seconds": 30,
+    "postcondition_timeout_seconds": 30
   },
   "templates": {
     "main_menu": "templates/main_menu.png",
     "shipments_screen": "templates/shipments_screen.png",
     "battle_screen": "templates/battle_screen.png",
     "victory": "templates/victory.png",
-    "defeat": "templates/defeat.png"
+    "defeat": "templates/defeat.png",
+    "shipments_button": "templates/shipments_button.png",
+    "resources": "templates/resources.png"
   }
 }
