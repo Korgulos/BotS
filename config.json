@@ -10,9 +10,11 @@
   },
   "input": {
     "backend": "ydotool",
-    "enabled": false,
+    "enabled": true,
     "click_button": "0xC0",
-    "min_seconds_between_clicks": 2.0
+    "min_seconds_between_clicks": 2.0,
+    "mousemove_backend": "xdotool",
+    "auto_focus": true
   },
   "steam": {
     "appid": "",
@@ -26,7 +28,7 @@
     "timeout_seconds": 720
   },
   "agent": {
-    "dry_run": true,
+    "dry_run": false,
     "loop_interval_seconds": 3,
     "max_consecutive_errors": 5,
     "template_threshold": 0.91,
@@ -38,10 +40,10 @@
   "templates": {
     "main_menu": "templates/main_menu.png",
     "shipments_screen": "templates/shipments_screen.png",
-    "battle_screen": "templates/battle_screen.png",
-    "victory": "templates/victory.png",
-    "defeat": "templates/defeat.png",
     "shipments_button": "templates/shipments_button.png",
     "resources": "templates/resources.png"
+  },
+  "template_preprocessing": {
+    "shipments_button": "gaussian3"
   }
 }

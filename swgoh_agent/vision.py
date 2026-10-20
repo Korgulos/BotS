@@ -27,8 +27,10 @@ class Detection(NamedTuple):
 class TemplateMatcher:
     """Matches templates against a frame; template images are cached by mtime."""
 
-    def __init__(self, resolver: Callable[[str | None], Path | None]):
+    def __init__(self, resolver: Callable[[str | None], Path | None],
+                 preprocessing: dict[str, str] | None = None):
         self._resolve = resolver
+        self._preprocessing = preprocessing or {}
         self._cache: dict[Path, tuple[int, np.ndarray]] = {}
 
     def _load(self, path: Path) -> np.ndarray | None:
@@ -63,6 +65,9 @@ class TemplateMatcher:
         if th > ih or tw > iw:
             return NO_MATCH
 
+        if self._preprocessing.get(ref) == "gaussian3":
+            img = cv2.GaussianBlur(img, (3, 3), 0)
+            template = cv2.GaussianBlur(template, (3, 3), 0)
         result = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
         _, score, _, loc = cv2.minMaxLoc(result)
         return Match(float(score), (int(loc[0] + tw / 2), int(loc[1] + th / 2)))

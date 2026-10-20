@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +22,8 @@ class InputSettings:
     enabled: bool
     click_button: str
     min_seconds_between_clicks: float
+    mousemove_backend: str = "xdotool"
+    auto_focus: bool = False
 
 
 @dataclass(frozen=True)
@@ -56,12 +58,18 @@ class Settings:
     agent: AgentSettings
     templates: dict[str, str]
     raw: dict[str, Any]  # kept for the one-time legacy import
+    template_preprocessing: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def load(cls, path: Path = ROOT / "config.json") -> "Settings":
         raw = json.loads(path.read_text(encoding="utf-8"))
+        preprocessing = dict(raw.get("template_preprocessing", {}))
+        if any(mode not in ("none", "gaussian3") for mode in preprocessing.values()):
+            raise ValueError("Template preprocessing must be none or gaussian3")
         cap = raw["capture"]
         inp = raw.get("input", {})
+        if inp.get("mousemove_backend", "xdotool") not in ("xdotool", "ydotool"):
+            raise ValueError("input.mousemove_backend must be xdotool or ydotool")
         oll = raw.get("ollama", {})
         ag = raw.get("agent", {})
 
@@ -88,7 +96,9 @@ class Settings:
             ),
             input=InputSettings(
                 enabled=bool(inp.get("enabled", False)),
+                auto_focus=bool(inp.get("auto_focus", False)),
                 click_button=str(inp.get("click_button", "0xC0")),
+                mousemove_backend=inp.get("mousemove_backend", "xdotool"),
                 min_seconds_between_clicks=float(
                     inp.get("min_seconds_between_clicks", 2.0)
                 ),
@@ -113,6 +123,7 @@ class Settings:
             ),
             templates=dict(raw.get("templates", {})),
             raw=raw,
+            template_preprocessing=preprocessing,
         )
 
     def resolve_template(self, ref: str | None) -> Path | None:

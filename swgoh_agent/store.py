@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import re
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
 from .config import ROOT
+from .action_types import postconditions
 
 DATABASE = ROOT / "agent.sqlite3"
 SCHEMA_FILE = ROOT / "agent_schema.sql"
@@ -42,6 +44,14 @@ class ActionRule:
     cooldown_seconds: float
     min_confidence: float | None
     conditions: tuple[dict, ...]
+    kind: str = "click"
+    parameters: dict = field(default_factory=dict)
+    postcondition_states: tuple[str, ...] | None = None
+
+    @property
+    def expected_states(self) -> tuple[str, ...]:
+        return (self.postcondition_states if self.postcondition_states is not None
+                else ((self.postcondition_state,) if self.postcondition_state else ()))
 
 
 @dataclass(frozen=True)
@@ -76,6 +86,7 @@ class Store:
         with self._connect() as db:
             db.executescript(SCHEMA_FILE.read_text(encoding="utf-8"))
             db.execute("BEGIN IMMEDIATE")
+            migrate_actions(db)
             if _needs_seed(db):
                 # execute() keeps seed, legacy imports and metadata atomic.
                 statement = ""
@@ -87,6 +98,7 @@ class Store:
                 if statement.strip():
                     raise ValueError("Incomplete seed SQL statement")
                 _import_legacy_definitions(db, self._legacy_config)
+            migrate_postconditions(db)
             db.execute(
                 "INSERT OR IGNORE INTO app_metadata (key, value) "
                 "VALUES ('seeded', '1')"
@@ -157,10 +169,44 @@ def _row_to_action(row: sqlite3.Row) -> ActionRule:
         cooldown_seconds=float(row["cooldown_seconds"]),
         min_confidence=row["min_confidence"],
         conditions=tuple(json.loads(row["conditions_json"])),
+        kind=row["kind"],
+        parameters=json.loads(row["parameters_json"]),
+        postcondition_states=tuple(postconditions(dict(row))),
     )
 
 
 # -- first-run seeding and legacy imports ------------------------------------
+
+def migrate_actions(db: sqlite3.Connection) -> None:
+    """Atomically expand SQLite's kind CHECK while preserving existing records."""
+    sql = db.execute("SELECT sql FROM sqlite_master WHERE name='actions'").fetchone()[0]
+    columns = [r[1] for r in db.execute('PRAGMA table_info(actions)')]
+    if "'click_text'" in sql and 'parameters_json' in columns:
+        return
+    canonical = re.search(r'CREATE TABLE IF NOT EXISTS actions \(.*?\n\);',
+                          SCHEMA_FILE.read_text(), re.S).group(0)
+    db.execute(canonical.replace('IF NOT EXISTS actions', 'actions_upgrade'))
+    new_columns = {r[1] for r in db.execute('PRAGMA table_info(actions_upgrade)')}
+    if set(columns) - new_columns:
+        raise ValueError('Action migration found custom columns; refusing to discard them')
+    objects = [r[0] for r in db.execute(
+        "SELECT sql FROM sqlite_master WHERE tbl_name='actions' AND type IN ('index','trigger') AND sql IS NOT NULL")]
+    quoted = ','.join('"'+c+'"' for c in columns)
+    db.execute(f'INSERT INTO actions_upgrade ({quoted}) SELECT {quoted} FROM actions')
+    db.execute('DROP TABLE actions')
+    db.execute('ALTER TABLE actions_upgrade RENAME TO actions')
+    for statement in objects:
+        db.execute(statement)
+
+
+def migrate_postconditions(db: sqlite3.Connection) -> None:
+    columns = {row[1] for row in db.execute('PRAGMA table_info(actions)')}
+    if 'postcondition_states_json' not in columns:
+        db.execute('ALTER TABLE actions ADD COLUMN postcondition_states_json TEXT')
+    for name, state in db.execute('SELECT name,postcondition_state FROM actions WHERE postcondition_states_json IS NULL').fetchall():
+        db.execute('UPDATE actions SET postcondition_states_json=? WHERE name=?',
+                   (json.dumps([state] if state else []), name))
+
 
 def _needs_seed(db: sqlite3.Connection) -> bool:
     """Seed once. Older databases (no flag) are only seeded if they are empty."""
@@ -256,8 +302,8 @@ def _insert_action(db: sqlite3.Connection, action: dict, position: int) -> None:
         INSERT INTO actions (
             name, when_state_json, template, description, enabled,
             requires_manual_review, postcondition_state, cooldown_seconds,
-            min_confidence, conditions_json, sort_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            min_confidence, conditions_json, sort_order, kind, parameters_json, postcondition_states_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             action["name"],
@@ -271,6 +317,9 @@ def _insert_action(db: sqlite3.Connection, action: dict, position: int) -> None:
             action.get("min_confidence"),
             json.dumps(action.get("conditions", []), ensure_ascii=False),
             position,
+            action.get("kind", "click"),
+            json.dumps(action.get("parameters", {})),
+            json.dumps(postconditions(action)),
         ),
     )
 
