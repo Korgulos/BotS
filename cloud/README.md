@@ -52,7 +52,7 @@ sections not yet normalized into dedicated tables.
 
 Use Python **3.12** for the test suite; pgserver provides a temporary real PostgreSQL
 16.2 instance without system installation or root access. Production uses Neon
-PostgreSQL 18 and the same standard SQL/JSONB/upsert features.
+PostgreSQL 17 and the same standard SQL/JSONB/upsert features.
 
 ```bash
 python3.12 -m venv .venv-cloud
@@ -154,3 +154,13 @@ EA login/refresh flow, and safe session-conflict behavior. The native interop DL
 cannot simply run without the game's IL2CPP runtime. No captured EA session tokens
 are uploaded by this release. Purchase authorization and the crystal-spending block
 remain requirements for any future action executor.
+
+## Web panel
+
+Open the Render API root URL in a browser. Enter the read token or select the
+private `cloud/.state/reader.local.json` file. The token is held only in tab memory,
+never localStorage, cookies or the URL. The panel reads the API on the same origin
+and refreshes every 15 seconds while visible. It shows all shipment offers from
+the latest snapshot (with search, currency/shop filters and pagination), inbox,
+energy windows, guild members, battles and individual RPC details. No game
+actions or admin operations are exposed. Log out before sharing the screen.

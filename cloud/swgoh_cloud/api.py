@@ -1,10 +1,13 @@
 from contextlib import asynccontextmanager
 import hmac
 import secrets
+from pathlib import Path
 
 from fastapi import FastAPI, Depends, HTTPException, Request, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -60,6 +63,17 @@ def create_app(settings: Settings, engine=None):
         docs_url="/docs" if settings.docs else None, redoc_url=None,
         openapi_url="/openapi.json" if settings.docs else None)
     app.add_middleware(BodyLimit, limit=settings.max_body_bytes)
+    panel = Path(__file__).parent / "panel"
+    app.mount("/panel-assets", StaticFiles(directory=panel), name="panel-assets")
+
+    @app.get("/", include_in_schema=False)
+    def dashboard():
+        return FileResponse(panel / "index.html", headers={
+            "Cache-Control": "no-store",
+            "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+            "Referrer-Policy": "no-referrer",
+            "X-Content-Type-Options": "nosniff",
+        })
     bearer = HTTPBearer(auto_error=False)
 
     @app.exception_handler(RequestValidationError)
