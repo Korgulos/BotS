@@ -1,0 +1,5 @@
+.state/
+bridge.local.json
+reader.local.json
+__pycache__/
+*.pyc

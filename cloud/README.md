@@ -1,0 +1,154 @@
+# SWGoH Cloud — observation backend 0.1
+
+FastAPI + PostgreSQL, intended for the confirmed Render workspace **Swgoh bot**.
+This starts the cloud part with a working historical SQL store and local uploader.
+The game still needs to run to collect new observations. This release does not log
+into EA, send game RPCs from the cloud, execute remote purchases/Claims, or schedule
+game actions. The existing in-game inspector continues handling approved actions.
+
+## Data path
+
+```text
+running game / inspector DLL -> local read-only bridge -> HTTPS API -> PostgreSQL
+                                                    <- read credential / queries
+```
+
+The bridge reads only the inspector's loopback GET endpoints. It never forwards
+its local key, request envelopes, authentication/telemetry RPCs, raw body bytes,
+headers, or inbox claim references. Source credentials are bound server-side to one
+account and one device. Read and ingest credentials have separate roles. Random
+credentials are stored only as SHA-256 digests in PostgreSQL. Admin bootstrap uses
+a separate platform environment secret. Do not reuse EA or inspector credentials.
+
+Stored projections can include character definitions, guild/member display names,
+resource amounts, battle records and timestamps. They are private account data:
+all data routes require a read/ingest key with the relevant role. OpenAPI/docs are
+disabled on Render; healthz is public. Credentials can be listed by metadata and
+revoked by an administrator; values are returned only during initial issuance.
+
+## SQL tables
+
+- `accounts`: local aliases, independent of EA account IDs.
+- `sources`, `api_keys`: device identity, scoped credentials and revocation state.
+- `rpc_events`: idempotent per-device/session/event observations with revisions,
+  capture timestamps and bounded JSONB projections.
+- `snapshots`: latest per-account/device/topic state; delayed older uploads cannot
+  replace a newer snapshot.
+- `shipment_offers`, `inbox_messages`, `guild_members`: relational projections linked
+  to the original observation. Member ordinals are snapshot-local, not stable
+  player IDs. Identical names are not assumed to identify the same person.
+- `battles`: phase, type, seed, outcome and capture-completeness metadata. Start and
+  Finish are not automatically asserted to match based on seed alone.
+
+`schema.sql` is the generated PostgreSQL DDL. Startup runs version 1 migrations
+under an advisory transaction lock. Each ingest batch commits atomically. Repeated
+uploads are acknowledged without duplicate rows, including when the initial ACK
+was lost. Enriched revisions update their projections in the same transaction.
+The existing inspector truncation limits remain visible: a 200/435 battle capture
+is stored as partial, never labeled a complete replay. Captured JSONB also keeps
+sections not yet normalized into dedicated tables.
+
+## Local setup and tests
+
+Use Python **3.12** for the test suite; pgserver provides a temporary real PostgreSQL
+16.2 instance without system installation or root access. Production uses Render
+PostgreSQL 18 and the same standard SQL/JSONB/upsert features.
+
+```bash
+python3.12 -m venv .venv-cloud
+.venv-cloud/bin/pip install -r cloud/requirements-dev.txt
+PYTHONPATH=cloud .venv-cloud/bin/python -m pytest cloud/tests -q
+```
+
+For local API use, set `DATABASE_URL` and a random `CLOUD_ADMIN_TOKEN` (32+ chars),
+then run from this repository root:
+
+```bash
+PYTHONPATH=cloud .venv-cloud/bin/uvicorn swgoh_cloud.main:app --host 127.0.0.1 --port 18183
+```
+
+Do not commit actual `.env` files. The `.env.example` contains placeholders only.
+`/healthz` verifies database connectivity. TLS is required for remote bridge uploads;
+HTTP is allowed only to 127.0.0.1 for local testing. Client redirects are disabled.
+
+## Render deployment
+
+The root `render.yaml` defines an isolated `swgoh-inspector-cloud` web service and
+`swgoh-inspector-db` database in **Frankfurt**, matching the workspace's existing
+region. The existing swgoh_api/swgoh-ui are separate services.
+
+**Prototype compute plans are free. Free Render Postgres expires after 30 days**,
+has 1 GB and no platform backups. Upgrade before relying on it for durable history;
+there is no automatic paid upgrade. Free web services can sleep after 15 minutes
+without inbound traffic, so the first request can take longer. A local outbox
+retains pending observations across slow responses/restarts. This prototype is
+not a continuously running autonomous game worker.
+
+1. Push the code and root `render.yaml` to the linked Git repository.
+2. Create a Render Blueprint from that repo/branch and inspect the resources.
+3. Deploy it. `DATABASE_URL` is wired internally from the database. The database
+   disallows external IPs. Render generates `CLOUD_ADMIN_TOKEN` privately.
+4. Verify `/healthz`; confirm a request without authentication cannot read data.
+5. Set the generated admin credential in a local environment without sharing it.
+6. Enroll a local alias/source (commands below), then unset the admin variable.
+
+The Blueprint has automatic application deploys disabled. Review future Blueprint
+syncs: resource configuration changes can still trigger a deploy. SQL migration
+runs at API startup rather than a paid-plan-only pre-deploy command.
+
+The public Render JSON schema validates this Blueprint. If installing the Render
+CLI, additionally run `render blueprints validate render.yaml` before applying.
+Official references: https://render.com/docs/blueprint-spec,
+https://render.com/docs/free, https://render.com/docs/python-version.
+
+## Enrollment and bridge
+
+Enrollment requires the separate admin token through `CLOUD_ADMIN_TOKEN`. It writes
+one-time read and ingest credentials to mode-0600 files in gitignored `cloud/.state`;
+it never prints the credentials. The admin token is not stored in the bridge config.
+
+```bash
+PYTHONPATH=cloud .venv-cloud/bin/python -m swgoh_cloud.enroll \
+  --url https://YOUR-SERVICE.onrender.com --alias main --source home-pc
+PYTHONPATH=cloud .venv-cloud/bin/python -m swgoh_cloud.bridge \
+  --config cloud/.state/bridge.local.json --once
+```
+
+Remove `--once` to keep collecting while the game runs. The bridge reads the current
+inspector URL/key on every cycle, so a game restart creates a new observation
+session without manual token editing. Polling defaults to 5 seconds. It renews the
+inspector's HTTP observation lease; the inspector's 250-ms sampling can still miss
+short requests. It retains at most the inspector's current 200 RPC rows.
+
+SQLite outbox/checkpoints are committed together. HTTP upload retries resend only
+observations; there is no code path for retrying a game action. Outbox size is
+bounded (5000 pending observations / 128 MiB); it never silently evicts unacknowledged
+data. Original inspector capture timestamps remain inside snapshot payloads.
+Bridge read/upload timestamps do not prove the server/game state was refreshed.
+
+## API
+
+Admin bearer:
+- `POST /v1/accounts` with `{ "alias": "main" }` -> account ID and one-time read key.
+- `POST /v1/accounts/{id}/sources` with `{ "name": "home-pc" }` -> one-time ingest key.
+- `GET /v1/accounts`, `GET /v1/keys` (metadata only), `DELETE /v1/keys/{id}` (revocation).
+
+Ingest bearer: `POST /v1/ingest` with `{ "events": [...] }`; 1–50 events, at most
+1 MiB/event and 2 MiB/request. Secrets/raw transport fields and unknown RPCs are
+rejected. Client-supplied account/source identity is forbidden.
+
+Read bearer:
+- `GET /v1/events?service=BattleRpc&operation=BattleFinish&limit=50&offset=0` (metadata list)
+- `GET /v1/events/{id}` (one full captured projection)
+- `GET /v1/snapshots`, `/v1/shipments`, `/v1/inbox`, `/v1/guild/members`
+- `GET /v1/battles`, `/v1/capabilities`
+
+## Next: standalone game RPC
+
+Independent cloud Claims need more than the same HTTP URL. The current schema
+catalog contains CLR member names, not complete protobuf wire field tags. We still
+need a verified standalone request/response codec, envelope/signature/session rules,
+EA login/refresh flow, and safe session-conflict behavior. The native interop DLLs
+cannot simply run without the game's IL2CPP runtime. No captured EA session tokens
+are uploaded by this release. Purchase authorization and the crystal-spending block
+remain requirements for any future action executor.

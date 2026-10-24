@@ -1,0 +1,7 @@
+{
+  "cloud_url": "https://YOUR-SERVICE.onrender.com",
+  "ingest_token": "",
+  "inspector_url_file": "/home/korgulos/Games/ea-app/drive_c/Program Files/EA Games/SWGoH/BepInEx/external-inspector-url.txt",
+  "outbox_path": "cloud/.state/outbox.sqlite3",
+  "interval_seconds": 5
+}
