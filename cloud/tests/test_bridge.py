@@ -42,7 +42,7 @@ def test_bridge_to_real_postgres(engine,tmp_path):
     def local(request):
         reads.append((request.method,request.url.path))
         assert request.method=='GET'
-        if request.url.path=='/api/http':return httpx.Response(200,json={'requests':[
+        if request.url.path=='/api/http':return httpx.Response(200,json={'error':None,'requests':[
             {'id':1,'state':'Finished','service':'AuthRpc','operation':'DoAuthNucleus','headers':{'secret':'NO_UPLOAD'}},
             {'id':2,'state':'Finished','service':'BattleRpc','operation':'BattleFinish','detailsAvailable':True,'status':200,'firstSeen':datetime.now(timezone.utc).isoformat()}]})
         if request.url.path=='/api/http-detail':return httpx.Response(200,json={'ready':True,'details':{'kind':'battle','phase':'finish','request':{'type':'TERRITORYWARBATTLE','outcome':'WIN','recordCount':435,'records':[],'recordsTruncated':True,'state':{'data':{'battleSeed':-900919326}}}}})

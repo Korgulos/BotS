@@ -119,7 +119,7 @@ def collect(local, base, key, session, outbox):
     def get(path):
         response = local.get(base+path, headers=headers); response.raise_for_status()
         data = response.json()
-        if "error" in data:
+        if data.get("error"):
             raise RuntimeError("Inspector data unavailable")
         return data
     monitor = get("/api/http?enabled=1")
