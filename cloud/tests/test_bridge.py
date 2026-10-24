@@ -44,6 +44,7 @@ def test_bridge_to_real_postgres(engine,tmp_path):
         assert request.method=='GET'
         if request.url.path=='/api/http':return httpx.Response(200,json={'error':None,'requests':[
             {'id':1,'state':'Finished','service':'AuthRpc','operation':'DoAuthNucleus','headers':{'secret':'NO_UPLOAD'}},
+            {'id':3,'state':'Finished','service':'PlayerRpc','operation':'Ping','detailsAvailable':False,'ping':{'systemTime':'1792879884'}},
             {'id':2,'state':'Finished','service':'BattleRpc','operation':'BattleFinish','detailsAvailable':True,'status':200,'firstSeen':datetime.now(timezone.utc).isoformat()}]})
         if request.url.path=='/api/http-detail':return httpx.Response(200,json={'ready':True,'details':{'kind':'battle','phase':'finish','request':{'type':'TERRITORYWARBATTLE','outcome':'WIN','recordCount':435,'records':[],'recordsTruncated':True,'state':{'data':{'battleSeed':-900919326}}}}})
         if request.url.path=='/api/shipments':return httpx.Response(200,json={'available':True,'offers':{'shipments':[]}})
@@ -52,7 +53,7 @@ def test_bridge_to_real_postgres(engine,tmp_path):
     queue=Outbox(tmp_path/'queue.sqlite3')
     with httpx.Client(transport=httpx.MockTransport(local)) as client:
         collect(client,'http://127.0.0.1:18181','K'*48,'inspector-session-test',queue)
-    assert queue.conn.execute('SELECT count(*) FROM outbox').fetchone()[0]==4
+    assert queue.conn.execute('SELECT count(*) FROM outbox').fetchone()[0]==5
     attempts=[0]
     def upload(request):
         assert b'NO_UPLOAD' not in request.content
@@ -63,11 +64,13 @@ def test_bridge_to_real_postgres(engine,tmp_path):
         return httpx.Response(response.status_code,json=response.json())
     with httpx.Client(transport=httpx.MockTransport(upload)) as client:
         with pytest.raises(httpx.ReadTimeout):queue.flush(client,'https://cloud.invalid',source['ingest_token'])
-        assert queue.conn.execute('SELECT count(*) FROM outbox').fetchone()[0]==4
-        assert queue.flush(client,'https://cloud.invalid',source['ingest_token'])==4
+        assert queue.conn.execute('SELECT count(*) FROM outbox').fetchone()[0]==5
+        assert queue.flush(client,'https://cloud.invalid',source['ingest_token'])==5
     reader={'Authorization':'Bearer '+account['read_token']}
     assert len(cloud.get('/v1/snapshots',headers=reader).json())==3
     assert cloud.get('/v1/battles',headers=reader).json()[0]['outcome']=='WIN'
+    ping=next(e for e in cloud.get('/v1/events',headers=reader).json() if e['operation']=='Ping')
+    assert cloud.get('/v1/events/'+ping['id'],headers=reader).json()['payload']['systemTime']=='1792879884'
     assert not any(method!='GET' for method,path in reads)
     queue.close()
 

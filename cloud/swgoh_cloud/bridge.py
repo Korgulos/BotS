@@ -130,7 +130,8 @@ def collect(local, base, key, session, outbox):
         if row.get("state") not in {"Finished","Error","Aborted","ConnectionTimedOut","TimedOut"}:
             continue
         metadata = {k:row.get(k) for k in ("method","state","status","requestBytes","responseBytes","requestContentType","responseContentType","rpcCode")}
-        payload = None
+        # Ping's decoded result is inline in the monitor, unlike larger RPC details.
+        payload = row.get("ping") if service == "PlayerRpc" and operation == "Ping" and isinstance(row.get("ping"), dict) else None
         if row.get("detailsAvailable"):
             identifier = row.get("id")
             if type(identifier) is not int or identifier < 0:
