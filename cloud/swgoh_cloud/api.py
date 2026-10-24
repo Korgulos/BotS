@@ -47,7 +47,12 @@ def create_app(settings: Settings, engine=None):
     engine = engine or db.engine_for(settings.database_url)
     @asynccontextmanager
     async def lifespan(app):
-        db.migrate(engine)
+        migration_engine = db.engine_for(settings.migration_database_url) if settings.migration_database_url else engine
+        try:
+            db.migrate(migration_engine)
+        finally:
+            if migration_engine is not engine:
+                migration_engine.dispose()
         yield
         engine.dispose()
 

@@ -8,6 +8,7 @@ class Settings:
     admin_token: str
     docs: bool = False
     max_body_bytes: int = 2 * 1024 * 1024
+    migration_database_url: str | None = None
 
     @classmethod
     def from_env(cls):
@@ -15,4 +16,5 @@ class Settings:
         token = os.environ.get("CLOUD_ADMIN_TOKEN", "")
         if not url or len(token) < 32:
             raise RuntimeError("Set DATABASE_URL and a CLOUD_ADMIN_TOKEN of at least 32 characters")
-        return cls(url, token, os.environ.get("CLOUD_DOCS", "false").lower() == "true")
+        return cls(url, token, os.environ.get("CLOUD_DOCS", "false").lower() == "true",
+                   migration_database_url=os.environ.get("DATABASE_URL_UNPOOLED") or None)

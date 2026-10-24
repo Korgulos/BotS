@@ -51,7 +51,7 @@ sections not yet normalized into dedicated tables.
 ## Local setup and tests
 
 Use Python **3.12** for the test suite; pgserver provides a temporary real PostgreSQL
-16.2 instance without system installation or root access. Production uses Render
+16.2 instance without system installation or root access. Production uses Neon
 PostgreSQL 18 and the same standard SQL/JSONB/upsert features.
 
 ```bash
@@ -73,24 +73,26 @@ HTTP is allowed only to 127.0.0.1 for local testing. Client redirects are disabl
 
 ## Render deployment
 
-The root `render.yaml` defines an isolated `swgoh-inspector-cloud` web service and
-`swgoh-inspector-db` database in **Frankfurt**, matching the workspace's existing
-region. The existing swgoh_api/swgoh-ui are separate services.
+The root `render.yaml` defines the free `swgoh-inspector-cloud` API in
+**Frankfurt**. PostgreSQL is hosted in the existing Neon `swgoh_bot` project,
+branch `inspector`, database `swgoh_inspector`. Existing swgoh_api/swgoh-ui
+services are separate. No game credentials are needed by this observation API.
 
-**Prototype compute plans are free. Free Render Postgres expires after 30 days**,
-has 1 GB and no platform backups. Upgrade before relying on it for durable history;
-there is no automatic paid upgrade. Free web services can sleep after 15 minutes
-without inbound traffic, so the first request can take longer. A local outbox
-retains pending observations across slow responses/restarts. This prototype is
-not a continuously running autonomous game worker.
+Set `DATABASE_URL` to Neon's pooled TLS connection and
+`DATABASE_URL_UNPOOLED` to the direct TLS connection for startup migrations.
+Both are private Render environment variables, never source-controlled.
+The previously provisioned free Render database is unused; removing its
+Blueprint definition does not delete it.
 
-1. Push the code and root `render.yaml` to the linked Git repository.
-2. Create a Render Blueprint from that repo/branch and inspect the resources.
-3. Deploy it. `DATABASE_URL` is wired internally from the database. The database
-   disallows external IPs. Render generates `CLOUD_ADMIN_TOKEN` privately.
-4. Verify `/healthz`; confirm a request without authentication cannot read data.
-5. Set the generated admin credential in a local environment without sharing it.
-6. Enroll a local alias/source (commands below), then unset the admin variable.
+Free web services can sleep after 15 minutes without inbound traffic, so the
+first request can take longer. A local outbox retains pending observations
+across slow responses/restarts. This is not an autonomous game worker.
+
+1. Push code and `render.yaml` to the linked repository.
+2. Create/sync the Render Blueprint; enter both Neon secrets privately.
+3. Render generates `CLOUD_ADMIN_TOKEN` privately.
+4. Verify `/healthz` and that unauthenticated requests cannot read data.
+5. Enroll a local alias/source using the admin secret, then unset it.
 
 The Blueprint has automatic application deploys disabled. Review future Blueprint
 syncs: resource configuration changes can still trigger a deploy. SQL migration

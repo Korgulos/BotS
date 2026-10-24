@@ -1,4 +1,4 @@
-# Prototype: free Postgres expires after 30 days. Upgrade before storing long-term history.
+# Render API + existing Neon PostgreSQL. Set both database secrets privately.
 services:
   - type: web
     name: swgoh-inspector-cloud
@@ -18,15 +18,6 @@ services:
       - key: CLOUD_ADMIN_TOKEN
         generateValue: true
       - key: DATABASE_URL
-        fromDatabase:
-          name: swgoh-inspector-db
-          property: connectionString
-
-databases:
-  - name: swgoh-inspector-db
-    plan: free
-    region: frankfurt
-    databaseName: swgoh_inspector
-    user: swgoh_inspector
-    postgresMajorVersion: "18"
-    ipAllowList: []
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
