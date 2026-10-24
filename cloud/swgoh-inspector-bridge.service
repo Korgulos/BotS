@@ -1,0 +1,15 @@
+[Unit]
+Description=SWGoH inspector and cloud bridge auto-start
+
+[Service]
+Type=simple
+WorkingDirectory=/home/korgulos/Documents/Python/BotS
+ExecStart=/usr/bin/python3 /home/korgulos/Documents/Python/BotS/cloud/watch-game.py --delay 20 --opener /home/korgulos/Documents/Codex/2026-10-24/po/outputs/SWGoH-ExternalInspector/open-inspector.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=15
+KillMode=control-group
+UMask=0077
+
+[Install]
+WantedBy=default.target

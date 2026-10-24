@@ -164,3 +164,24 @@ and refreshes every 15 seconds while visible. It shows all shipment offers from
 the latest snapshot (with search, currency/shop filters and pagination), inbox,
 energy windows, guild members, battles and individual RPC details. No game
 actions or admin operations are exposed. Log out before sharing the screen.
+
+## Automatic game startup (Linux desktop)
+
+`watch-game.py` watches this user's `SWGoH.exe` process. The installed
+`swgoh-inspector-bridge.service` user service starts at login. On game detection,
+it waits 20 seconds, starts one bridge and opens `open-inspector.py` once the local
+server is ready. Closing the game stops the bridge; the watcher remains idle for
+the next launch. A per-outbox file lock prevents manual/automatic duplicate uploaders.
+No terminal, root service, paid cloud worker or game action is required.
+
+The checked-in unit contains this desktop's paths. To disable it locally:
+
+```bash
+systemctl --user disable --now swgoh-inspector-bridge.service
+```
+
+To view startup logs (no inspector URLs or credentials are logged):
+
+```bash
+journalctl --user -u swgoh-inspector-bridge.service -f
+```

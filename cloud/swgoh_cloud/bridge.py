@@ -156,6 +156,26 @@ def collect(local, base, key, session, outbox):
 
 
 def run(config, once=False):
+    # One uploader per outbox, including manually launched and automatic instances.
+    lock_path = Path(config["outbox_path"] + ".bridge.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock = lock_path.open("a")
+    os.chmod(lock_path, 0o600)
+    if os.name == "posix":
+        import fcntl
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            lock.close()
+            print("Bridge already running for this outbox", flush=True)
+            return
+    try:
+        return run_locked(config, once)
+    finally:
+        lock.close()
+
+
+def run_locked(config, once=False):
     cloud = validate_cloud_url(config["cloud_url"])
     if len(config.get("ingest_token", "")) < 32:
         raise ValueError("Configure the source ingest token")
