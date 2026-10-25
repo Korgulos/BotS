@@ -109,6 +109,8 @@ def run(operation,path=STATE,client=None,running=game_running,allow_read_retry=F
                 # Private payload saved locally; no raw data or account fields in stdout.
                 out=path.with_name('initial-data.local.json');stage='project_initial';projection=initial_projection(payload)
                 if s.get('expectedAllyCode') and projection['player']['allyCode']!=s['expectedAllyCode']:raise ValueError('Response account does not match the expected ally code')
+                from .shipment_wire import offers
+                projection['creditOffers']=offers(payload)
                 private_write(out,{'capturedAt':datetime.now(timezone.utc).isoformat(),'data':projection})
                 result['inventory']=projection['inventory'];result['inbox_count']=len(projection['inbox']);result['shipments']=projection['shipments'];result['guild_available']=projection['guildAvailable']
                 path.with_name('initial-wire.private.json').unlink(missing_ok=True)

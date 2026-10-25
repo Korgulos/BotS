@@ -15,7 +15,7 @@ from .inbox_policy import preview, message_hash
 
 ALLOWED = {'GRIND','PVP_CURRENCY','WAR_SHIP_CURRENCY','FORCE_POINT','PVP_SHIP_CURRENCY','SHARD_CURRENCY','GUILD_CURRENCY','RAID_REWARD_CURRENCY_01','RAID_REWARD_CURRENCY_02','RAID_REWARD_CURRENCY_03','EPISODE_CURRENCY','SHIP_GRIND','TERRITORY_BATTLE_CURRENCY','TERRITORY_BATTLE_CURRENCY_02','TERRITORY_BATTLE_CURRENCY_03','SOCIAL','SEASONS_CURRENCY','CONQUEST_CURRENCY','GL_EVENT_CURRENCY','ERA_CURRENCY'}
 TERMINAL = {'succeeded','failed','expired','cancelled'}
-ACTIVE = {'queued_prepare','preparing','prepared','queued_commit','sending','uncertain'}
+ACTIVE = {'queued_prepare','preparing','prepared','queued_commit','sending','uncertain','checking_commit'}
 
 def fingerprint(value):
     return hashlib.sha256(json.dumps(value,sort_keys=True,separators=(',',':')).encode()).hexdigest()
@@ -73,7 +73,7 @@ def install(app, engine, reader, controller, writer):
     def expire(conn):
         conn.execute(db.purchases.update().where(db.purchases.c.state.in_(['queued_prepare','preparing','prepared','queued_commit']),db.purchases.c.expires_at<db.now()).values(state='expired',code='APPROVAL_EXPIRED',updated_at=db.now()))
         # A claimed send is never requeued, including after a device disappears.
-        conn.execute(db.purchases.update().where(db.purchases.c.state=='sending',db.purchases.c.updated_at<db.now()-timedelta(seconds=60)).values(state='uncertain',code='RESULT_TIMEOUT',updated_at=db.now()))
+        conn.execute(db.purchases.update().where(db.purchases.c.state.in_(['sending','checking_commit']),db.purchases.c.updated_at<db.now()-timedelta(seconds=60)).values(state='uncertain',code='RESULT_TIMEOUT',updated_at=db.now()))
     def live(conn,source,session=None):
         a=conn.execute(select(db.agents).where(db.agents.c.source_id==source)).mappings().first()
         if not a or not a['online'] or not a['purchases_enabled'] or a['last_seen']<db.now()-timedelta(seconds=20) or session is not None and a['session']!=session:
@@ -88,7 +88,9 @@ def install(app, engine, reader, controller, writer):
             expire(c)
             rows=[dict(r) for r in c.execute(select(db.purchases).where(db.purchases.c.account_id==who['account_id']).order_by(db.purchases.c.created_at.desc()).limit(30)).mappings()]
             statuses=[dict(r) for r in c.execute(select(db.agents).join(db.sources,db.sources.c.id==db.agents.c.source_id).where(db.sources.c.account_id==who['account_id'])).mappings()]
-        return {'can_purchase':who['role']=='control','commands':rows,'bridges':statuses}
+            from .direct_purchases import status
+            direct=status(c,who)
+        return {'can_purchase':who['role']=='control','commands':rows,'bridges':statuses,'direct':direct}
 
     @router.post('/v1/purchases/prepare')
     def prepare(data:Prepare,who=Depends(controller)):
@@ -142,6 +144,7 @@ def install(app, engine, reader, controller, writer):
     def confirm(identifier:str,data:Confirm,who=Depends(controller)):
         with engine.begin() as c:
             expire(c);row=own(c,identifier,who)
+            if row['expected'].get('transport')=='direct':raise HTTPException(409,'Koristi direktnu potvrdu kupovine')
             if data.quote_hash!=row['quote_hash']:raise HTTPException(409,'Ponuda ili potvrda nisu važeći')
             if row['confirmed_at'] is not None:return row  # Lost ACK never creates another send.
             if row['state']!='prepared' or row['expires_at']<=db.now():raise HTTPException(409,'Potvrda je istekla ili kupovina nije spremna')
@@ -166,13 +169,14 @@ def install(app, engine, reader, controller, writer):
     def pending(who=Depends(writer)):
         with engine.begin() as c:
             expire(c)
-            row=c.execute(select(db.purchases).where(db.purchases.c.source_id==who['source_id'],db.purchases.c.state.in_(ACTIVE)).order_by(db.purchases.c.created_at).limit(1)).mappings().first()
+            row=c.execute(select(db.purchases).where(db.purchases.c.source_id==who['source_id'],db.purchases.c.state.in_(ACTIVE),db.purchases.c.expected['transport'].as_string().is_distinct_from('direct')).order_by(db.purchases.c.created_at).limit(1)).mappings().first()
             return dict(row) if row else None
 
     @router.post('/v1/bridge/purchases/{identifier}/claim')
     def claim(identifier:str,data:Claim,who=Depends(writer)):
         with engine.begin() as c:
             expire(c);row=own(c,identifier,who,True)
+            if row['expected'].get('transport')=='direct':raise HTTPException(409,'Direktnu kupovinu ne preuzima bridge')
             if row['session']!=data.session:raise HTTPException(409,'Igra je ponovo pokrenuta; zahtev se ne šalje')
             live(c,who['source_id'],data.session)
             states={'prepare':('queued_prepare','preparing'),'commit':('queued_commit','sending')};before,after=states[data.phase]
