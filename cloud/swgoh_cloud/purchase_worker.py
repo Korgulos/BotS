@@ -33,7 +33,7 @@ class PurchaseWorker:
         if local and local['session']!=session:
             report('uncertain' if phase in {'sending','uncertain'} else 'failed','LOCAL_SESSION_CHANGED');return
         def native(path,data=None):
-            h={'X-Inspector-Key':key}
+            h={'X-Inspector-Key':key,'Origin':base}
             r=client.get(base+path,headers=h) if data is None else client.post(base+path,headers=h,json=data)
             r.raise_for_status();return r.json()
         if local and local['state']=='settled':

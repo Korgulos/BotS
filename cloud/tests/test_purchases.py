@@ -83,6 +83,7 @@ def test_worker_never_replays_commit_across_restart(engine,tmp_path,lost):
                 fault[0]=True;raise httpx.ReadTimeout('ACK lost',request=request)
             return httpx.Response(result.status_code,content=result.content,headers={'content-type':'application/json'})
         assert request.url.host=='127.0.0.1'
+        assert request.headers['Origin']=='http://127.0.0.1:18181'
         if request.url.path=='/api/purchase/prepare':
             return httpx.Response(200,json={'token':'A'*48,'expiresAt':(db.now()+timedelta(seconds=30)).isoformat(),'quote':{**cmd['expected'],'balance':5000,'balanceAfter':2300}})
         if request.url.path=='/api/purchase/commit':
