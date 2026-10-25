@@ -208,3 +208,15 @@ outcomes block new commands; they are not silently retried or treated as failure
 A game restart invalidates old preparations. Cloud receipt/report retries are
 idempotent; completed purchases retain an audit record. No bridge listener is
 exposed to the Internet and no game authentication credentials leave the PC.
+
+## Mod selection policy (inspector 0.18+)
+
+Shipment mod offers are hidden unless the runtime controller confirms exactly five
+stars and a strictly positive SPEED stat in the secondary array. A Speed primary
+does not qualify. Missing, lower/higher rarity or unverified metadata fails closed.
+The original snapshot and ordinals remain intact for auditing; the panel filters
+its display, and the purchase API independently rejects disallowed mods. The native
+controller repeats the check before preparing and committing a purchase. Runtime
+mod projections are joined by shop, item ID, refresh time and definition, not by
+parsing a display ID or guessing stats. No mod is sold, deleted or purchased by
+this filtering. Restart the game after installing inspector 0.18.0.

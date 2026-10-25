@@ -112,3 +112,26 @@ def test_uncertain_result_blocks_new_purchase(engine):
     command=c.post('/v1/purchases/prepare',headers=o,json=b).json()
     with engine.begin() as x:x.execute(db.purchases.update().where(db.purchases.c.id==command['id']).values(state='uncertain'))
     assert c.post('/v1/purchases/prepare',headers=o,json={**b,'request_id':str(uuid4())}).status_code==409
+
+@pytest.mark.parametrize('stars,secondaries,expected',[
+    (5,[{'stat':'SPEED','value':5}],True),
+    (4,[{'stat':'SPEED','value':5}],False),
+    (6,[{'stat':'SPEED','value':5}],False),
+    (5,[{'stat':'HEALTH','value':500}],False),
+    (5,[{'stat':'SPEED','value':0}],False),
+    (5,[],False),
+])
+def test_only_five_star_mods_with_positive_secondary_speed(stars,secondaries,expected):
+    from swgoh_cloud.mod_policy import eligible_mod
+    reward={'mod':{'verified':True,'stars':stars,'secondaries':secondaries,'primary':{'stat':'SPEED','value':30}}}
+    assert eligible_mod(reward) is expected
+    assert not eligible_mod({'mod':{'verified':False,'stars':5,'secondaries':[{'stat':'SPEED','value':5}]}})
+    assert not eligible_mod({})
+
+
+def test_purchase_api_blocks_unverified_and_wrong_mods(engine):
+    c,a,o,w,r,b,source=prepare_fixture(engine)
+    with engine.begin() as x:x.execute(db.offers.update().values(shop='SHIPMENTMOD',reward={'type':'STATMOD','minQuantity':1,'definition':'mod'}))
+    assert c.post('/v1/purchases/prepare',headers=o,json=b).status_code==409
+    with engine.begin() as x:x.execute(db.offers.update().values(reward={'type':'STATMOD','minQuantity':1,'definition':'mod','mod':{'verified':True,'stars':5,'secondaries':[{'stat':'SPEED','value':5}]}}))
+    assert c.post('/v1/purchases/prepare',headers=o,json=b).status_code==200

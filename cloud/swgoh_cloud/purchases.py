@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from . import db
 from .models import StrictModel
+from .mod_policy import is_mod, eligible_mod
 
 ALLOWED = {'GRIND','PVP_CURRENCY','WAR_SHIP_CURRENCY','FORCE_POINT','PVP_SHIP_CURRENCY','SHARD_CURRENCY','GUILD_CURRENCY','RAID_REWARD_CURRENCY_01','RAID_REWARD_CURRENCY_02','RAID_REWARD_CURRENCY_03','EPISODE_CURRENCY','SHIP_GRIND','TERRITORY_BATTLE_CURRENCY','TERRITORY_BATTLE_CURRENCY_02','TERRITORY_BATTLE_CURRENCY_03','SOCIAL','SEASONS_CURRENCY','CONQUEST_CURRENCY','GL_EVENT_CURRENCY','ERA_CURRENCY'}
 TERMINAL = {'succeeded','failed','expired','cancelled'}
@@ -91,6 +92,7 @@ def install(app, engine, reader, controller, writer):
             if not row:raise HTTPException(409,'Potrebna je trenutna lista ponuda')
             price=row['price'] or {};reward=row['reward'] or {};currency=price.get('definition')
             if currency not in ALLOWED or price.get('type')!='CURRENCY':raise HTTPException(409,'Crystals, novac i nepoznate valute su blokirani')
+            if is_mod(row['shop'],reward) and not eligible_mod(reward):raise HTTPException(409,'Dozvoljeni su samo potvrđeni modovi sa 5★ i Speed sekundarnim statom')
             cost=price.get('minQuantity');quantity=reward.get('minQuantity')
             if row['purchased'] is not False or type(cost) is not int or type(quantity) is not int or not 0<cost<=2147483647 or not 0<quantity<=2147483647 or cost!=price.get('maxQuantity',cost) or quantity!=reward.get('maxQuantity',quantity) or not row['definition']:
                 raise HTTPException(409,'Ponuda nema potvrđenu cenu i količinu')
