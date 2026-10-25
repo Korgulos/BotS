@@ -185,7 +185,7 @@ def run_locked(config, once=False):
     try:
         with httpx.Client(timeout=30, follow_redirects=False, trust_env=False) as client:
             while True:
-                # Only ingestion is retried. This bridge has no game mutation route.
+                # Only ingestion is retried; confirmed native actions use the durable journal.
                 try:
                     outbox.flush(client,cloud,config["ingest_token"])
                 except (httpx.HTTPError, RuntimeError):

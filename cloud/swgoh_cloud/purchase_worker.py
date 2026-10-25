@@ -4,6 +4,7 @@ import json
 import re
 import httpx
 from .purchases import fingerprint, ALLOWED
+from .inbox_policy import message_hash, preview, native_preview
 
 class PurchaseWorker:
     def __init__(self, conn):
@@ -26,6 +27,8 @@ class PurchaseWorker:
         response=client.get(cloud+'/v1/bridge/purchases',headers=headers);response.raise_for_status();command=response.json()
         if not command:return
         identifier=command['id'];phase=command['state'];local=self.load(identifier)
+        inbox=command['expected'].get('kind')=='inbox'
+        route='/api/inbox/claim' if inbox else '/api/purchase'
         def report(state,code='',**extra):
             return cloud_post('/v1/bridge/purchases/'+identifier+'/report',dict(session=command['session'],state=state,code=re.sub('[^A-Za-z0-9_. -]','_',str(code))[:160],**extra))
         if command['session']!=session:
@@ -40,14 +43,22 @@ class PurchaseWorker:
             report(local['document']['result']['state'],local['document']['result']['code']);return
         if phase in {'queued_prepare','preparing'}:
             expected=command['expected']
-            if expected.get('currency') not in ALLOWED:
+            if not inbox and expected.get('currency') not in ALLOWED:
                 report('failed','CURRENCY_BLOCKED');return
             cloud_post('/v1/bridge/purchases/'+identifier+'/claim',dict(session=session,phase='prepare'))
             if local and local['state']=='prepared':doc=local['document']
             else:
                 try:
-                    doc=native('/api/purchase/prepare',expected)
-                    if doc.get('error') or not re.fullmatch('[a-fA-F0-9]{48}',doc.get('token','')) or any(doc['quote'].get(k)!=v for k,v in expected.items()):
+                    if inbox:
+                        snapshot=native('/api/inbox')
+                        matches=[m for m in snapshot.get('inbox',{}).get('messages',[]) if message_hash(m)==expected['message_hash']]
+                        if len(matches)!=1 or preview(matches[0])!=expected['preview']:raise ValueError('Inbox snapshot changed')
+                        reference=matches[0].get('claimReference')
+                        if not isinstance(reference,str) or not re.fullmatch('[a-fA-F0-9]{48}',reference):raise ValueError('Missing native reference')
+                        doc=native(route+'/prepare',{'reference':reference})
+                        doc['quote']=native_preview(doc['quote'])
+                    else:doc=native(route+'/prepare',expected)
+                    if doc.get('error') or not re.fullmatch('[a-fA-F0-9]{48}',doc.get('token','')) or (doc['quote']!=expected['preview'] if inbox else any(doc['quote'].get(k)!=v for k,v in expected.items())):
                         report('failed','LIVE_OFFER_VALIDATION_FAILED');return
                     self.save(identifier,session,'prepared',doc)
                 except (httpx.HTTPError,ValueError,KeyError,TypeError):
@@ -70,11 +81,11 @@ class PurchaseWorker:
             cloud_post('/v1/bridge/purchases/'+identifier+'/claim',dict(session=session,phase='commit'))
             # Synchronous SQLite commit BEFORE the only native mutation that spends resources.
             self.save(identifier,session,'committing',doc)
-            try:result=native('/api/purchase/commit',{'token':doc['token'],'confirmed':True})
+            try:result=native(route+'/commit',{'token':doc['token'],'confirmed':True})
             except (httpx.HTTPError,ValueError):result={'state':'uncertain','code':'SEND_RESPONSE_UNAVAILABLE'}
         else:
             # Recovery and all subsequent checks use GET. Never replay the native commit POST.
-            try:result=native('/api/purchase/status?token='+doc['token'])
+            try:result=native(route+'/status?token='+doc['token'])
             except (httpx.HTTPError,ValueError):result={'state':'uncertain','code':'STATUS_UNAVAILABLE'}
         state=result.get('state')
         if state=='sending':return

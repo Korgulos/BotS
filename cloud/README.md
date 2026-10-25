@@ -220,3 +220,7 @@ controller repeats the check before preparing and committing a purchase. Runtime
 mod projections are joined by shop, item ID, refresh time and definition, not by
 parsing a display ID or guessing stats. No mod is sold, deleted or purchased by
 this filtering. Restart the game after installing inspector 0.18.0.
+
+### Inbox Claim preko panela
+
+Control ključ može da pripremi jednu podržanu rang nagradu iz trenutnog inbox snimka. Bridge proverava isti snimak i priloge u lokalnom inspectoru. Native reference i approval token ostaju lokalno. Panel prikazuje tačne priloge i traži zasebnu potvrdu u roku od 30 sekundi. Primanje PREMIUM je dozvoljeno; trošenje crystals ostaje blokirano. Dismiss, posebne poruke, kuponi i entitlement tokovi nisu podržani. Jedan zajednički red serijalizuje kupovine i Claim; nepoznat ishod blokira sledeće akcije. Posle prekida/restarta proverava se status i ne ponavlja native commit. Nova native DLL nije potrebna (postojeće inbox Claim rute); restart bridge-a učitava novi worker.

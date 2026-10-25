@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert
 from . import db
 from .models import StrictModel
 from .mod_policy import is_mod, eligible_mod
+from .inbox_policy import preview, message_hash
 
 ALLOWED = {'GRIND','PVP_CURRENCY','WAR_SHIP_CURRENCY','FORCE_POINT','PVP_SHIP_CURRENCY','SHARD_CURRENCY','GUILD_CURRENCY','RAID_REWARD_CURRENCY_01','RAID_REWARD_CURRENCY_02','RAID_REWARD_CURRENCY_03','EPISODE_CURRENCY','SHIP_GRIND','TERRITORY_BATTLE_CURRENCY','TERRITORY_BATTLE_CURRENCY_02','TERRITORY_BATTLE_CURRENCY_03','SOCIAL','SEASONS_CURRENCY','CONQUEST_CURRENCY','GL_EVENT_CURRENCY','ERA_CURRENCY'}
 TERMINAL = {'succeeded','failed','expired','cancelled'}
@@ -42,11 +43,22 @@ class PublicQuote(StrictModel):
     price: int = Field(gt=0,le=2147483647)
     balance: int = Field(ge=0,le=2147483647)
     balanceAfter: int = Field(ge=0,le=2147483647)
+class InboxReward(StrictModel):
+    type: Literal["CURRENCY","MATERIAL","EQUIPMENT"]
+    definition: str = Field(min_length=1,max_length=160)
+    quantity: int = Field(gt=0)
+class InboxQuote(StrictModel):
+    kind: Literal["inbox"]
+    type: str = Field(max_length=100)
+    subjectKey: str = Field(max_length=160)
+    starts: str = Field(max_length=32)
+    expires: str = Field(max_length=32)
+    rewards: list[InboxReward] = Field(min_length=1,max_length=32)
 class Report(StrictModel):
     session: str = Field(pattern=r'^[a-f0-9]{64}$')
     state: Literal['prepared','succeeded','failed','uncertain']
     code: str = Field(default='',max_length=160,pattern=r'^[A-Za-z0-9_. -]*$')
-    quote: PublicQuote | None = None
+    quote: PublicQuote | InboxQuote | None = None
     expires_at: datetime | None = None
 
 
@@ -104,6 +116,28 @@ def install(app, engine, reader, controller, writer):
             result=dict(id=db.uid(),account_id=who['account_id'],source_id=row['source_id'],session=a['session'],request_id=str(data.request_id),event_id=str(data.event_id),ordinal=data.ordinal,state='queued_prepare',expected=expected,quote=None,quote_hash=None,code=None,created_at=db.now(),updated_at=db.now(),expires_at=db.now()+timedelta(seconds=45),confirmed_at=None)
             c.execute(db.purchases.insert().values(**result));return result
 
+    @router.post('/v1/inbox/prepare')
+    def prepare_inbox(data:Prepare,who=Depends(controller)):
+        with engine.begin() as c:
+            c.execute(select(db.accounts.c.id).where(db.accounts.c.id==who['account_id']).with_for_update()).one()
+            expire(c)
+            prior=c.execute(select(db.purchases).where(db.purchases.c.account_id==who['account_id'],db.purchases.c.request_id==str(data.request_id))).mappings().first()
+            if prior:
+                if prior['event_id']!=str(data.event_id) or prior['ordinal']!=data.ordinal or prior['expected'].get('kind')!='inbox':raise HTTPException(409,'ID zahteva je već upotrebljen')
+                return dict(prior)
+            if c.execute(select(db.purchases.c.id).where(db.purchases.c.account_id==who['account_id'],db.purchases.c.state.in_(ACTIVE))).first():raise HTTPException(409,'Prethodna akcija nije završena; ne ponavljaj zahtev')
+            snap=c.execute(select(db.snapshots).where(db.snapshots.c.account_id==who['account_id'],db.snapshots.c.topic=='inbox',db.snapshots.c.event_id==str(data.event_id))).mappings().first()
+            if not snap:raise HTTPException(409,'Potrebna je trenutna inbox lista')
+            try:
+                message=snap['payload']['inbox']['messages'][data.ordinal]
+                q=preview(message)
+                if not int(q['starts'])<=db.now().timestamp()<int(q['expires']):raise ValueError('Expired')
+            except (ValueError,KeyError,IndexError,TypeError):raise HTTPException(409,'Poruka nije podržana, potpuna ili aktivna')
+            a=live(c,snap['source_id'])
+            expected=dict(kind='inbox',preview=q,message_hash=message_hash(message))
+            result=dict(id=db.uid(),account_id=who['account_id'],source_id=snap['source_id'],session=a['session'],request_id=str(data.request_id),event_id=str(data.event_id),ordinal=data.ordinal,state='queued_prepare',expected=expected,quote=None,quote_hash=None,code=None,created_at=db.now(),updated_at=db.now(),expires_at=db.now()+timedelta(seconds=45),confirmed_at=None)
+            c.execute(db.purchases.insert().values(**result));return result
+
     @router.post('/v1/purchases/{identifier}/confirm')
     def confirm(identifier:str,data:Confirm,who=Depends(controller)):
         with engine.begin() as c:
@@ -155,7 +189,9 @@ def install(app, engine, reader, controller, writer):
             if data.state=='prepared':
                 if row['state'] not in {'preparing','prepared'} or data.quote is None or data.expires_at is None:raise HTTPException(409,'Neočekivana ponuda')
                 q=data.quote.model_dump()
-                if any(q[k]!=v for k,v in row['expected'].items()) or q['currency'] not in ALLOWED or q['balance']-q['price']!=q['balanceAfter']:raise HTTPException(409,'Ponuda se razlikuje od izabranog predmeta')
+                if row['expected'].get('kind')=='inbox':
+                    if q!=row['expected']['preview']:raise HTTPException(409,'Inbox prilozi su promenjeni')
+                elif not isinstance(data.quote,PublicQuote) or any(q.get(k)!=v for k,v in row['expected'].items()) or q['currency'] not in ALLOWED or q['balance']-q['price']!=q['balanceAfter']:raise HTTPException(409,'Ponuda se razlikuje od izabranog predmeta')
                 if data.expires_at.tzinfo is None:raise HTTPException(422,'Potrebna je vremenska zona')
                 expires=min(data.expires_at,db.now()+timedelta(seconds=30),row['expires_at'])
                 if expires<=db.now():return change(c,row,state='expired',code='APPROVAL_EXPIRED')
