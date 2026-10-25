@@ -18,7 +18,7 @@ def fixture(engine):
         x.execute(db.snapshots.insert().values(**{**snap,'topic':'inbox','payload':{'inbox':{'messages':[message]}}}))
     return c,o,w,r,b,source,message
 
-@pytest.mark.parametrize('type_subject',[('RANK_REWARDS','RANK_SUBJECT'),('PARAMETERIZED','RAID_REWARD_SUBJECT_KEY'),('GUILDRANKEDREWARD','GUILD_CHALLENGE_REWARD_SUBJECT_KEY'),('TERRITORYWARCOMPLETEREWARD','TERRITORY_WAR_SECOND_PLACE_SUBJECT_KEY')])
+@pytest.mark.parametrize('type_subject',[('RANK_REWARDS','RANK_SUBJECT'),('TERRITORYTOURNAMENTMATCHREWARD','TERRITORYTOURNAMENT_REWARD_NO_CHANGE_FIRST_SUBJECT_KEY'),('PARAMETERIZED','RAID_REWARD_SUBJECT_KEY'),('GUILDRANKEDREWARD','GUILD_CHALLENGE_REWARD_SUBJECT_KEY'),('TERRITORYWARCOMPLETEREWARD','TERRITORY_WAR_SECOND_PLACE_SUBJECT_KEY')])
 @pytest.mark.parametrize('lost',['native_commit','cloud_claim','changed_preview'])
 def test_inbox_claim_confirmation_and_restart_never_replays(engine,tmp_path,lost,type_subject):
     c,o,w,r,b,source,m=fixture(engine)
@@ -81,3 +81,11 @@ def test_unknown_subject_blocked(engine,kind):
     m.update(type=kind,subjectKey='UNVERIFIED_SUBJECT')
     with engine.begin() as x:x.execute(db.snapshots.update().where(db.snapshots.c.topic=='inbox').values(payload={'inbox':{'messages':[m]}}))
     assert c.post('/v1/inbox/prepare',headers=o,json=b).status_code==409
+
+
+def test_tournament_match_reward_exact_subject_and_special_actions():
+    from swgoh_cloud.inbox_policy import preview
+    m=dict(starts='1',expires='9999999999',attachmentCount=2,attachments=[dict(type='CURRENCY',definition='GRIND',minQuantity=100,maxQuantity=100),dict(type='CURRENCY',definition='PREMIUM',minQuantity=10,maxQuantity=10)]);m.update(type='TERRITORYTOURNAMENTMATCHREWARD',subjectKey='TERRITORYTOURNAMENT_REWARD_NO_CHANGE_FIRST_SUBJECT_KEY')
+    assert preview(m)['type']=='TERRITORYTOURNAMENTMATCHREWARD'
+    for changes in [{'subjectKey':'OTHER'},{'hasActionLink':True},{'hasEntitlement':True},{'hasCoupon':True},{'modCount':1}]:
+        with pytest.raises(ValueError):preview({**m,**changes})

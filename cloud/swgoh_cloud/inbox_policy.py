@@ -7,7 +7,7 @@ def message_hash(message):
 def preview(message):
     kind=str(message.get('type','')).replace('_','')
     if kind=='RANKREWARDS':kind='RANKREWARD'
-    if kind not in {'RANKREWARD','TERRITORYTOURNAMENTDAILYRANKREWARD'} and (kind,message.get('subjectKey')) not in {('PARAMETERIZED','RAID_REWARD_SUBJECT_KEY'),('GUILDRANKEDREWARD','GUILD_CHALLENGE_REWARD_SUBJECT_KEY'),('TERRITORYWARCOMPLETEREWARD','TERRITORY_WAR_SECOND_PLACE_SUBJECT_KEY')}:raise ValueError('Unsupported inbox type and subject')
+    if kind not in {'RANKREWARD','TERRITORYTOURNAMENTDAILYRANKREWARD'} and (kind,message.get('subjectKey')) not in {('TERRITORYTOURNAMENTMATCHREWARD','TERRITORYTOURNAMENT_REWARD_NO_CHANGE_FIRST_SUBJECT_KEY'),('PARAMETERIZED','RAID_REWARD_SUBJECT_KEY'),('GUILDRANKEDREWARD','GUILD_CHALLENGE_REWARD_SUBJECT_KEY'),('TERRITORYWARCOMPLETEREWARD','TERRITORY_WAR_SECOND_PLACE_SUBJECT_KEY')}:raise ValueError('Unsupported inbox type and subject')
     if any(message.get(k) for k in ('hasEntitlement','hasCoupon','hasActionLink','modCount','customButtonKey','attachmentsTruncated','fromSupport')):raise ValueError('Special inbox flow')
     items=message.get('attachments',[])
     if not 0<len(items)<=32 or message.get('attachmentCount')!=len(items):raise ValueError('Incomplete attachments')
