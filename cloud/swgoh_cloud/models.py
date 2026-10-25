@@ -13,7 +13,7 @@ OPERATIONS = {
     "ChannelRpc": {"GetEvents"},
     "Inspector": {"Snapshot"},
 }
-TOPICS = {"shipments", "inbox", "guild", "energy"}
+TOPICS = {"shipments", "inbox", "guild", "energy", "inventory"}
 SECRET_KEYS = {"authorization", "cookie", "setcookie", "password", "identitytoken", "accesstoken", "refreshtoken", "sessiontoken", "requesttoken", "apikey", "inspectorKey".lower(), "headers", "rawdata", "rawbody", "requestenvelope", "serializedpayload", "claimreference"}
 
 

@@ -260,3 +260,11 @@ Direct requests reserve the shared SQL purchase journal before I/O, recheck acco
 Direct shipments now accept every known runtime `CurrencyType` except PREMIUM (crystals) and REAL_MONEY. Names and numeric wire IDs live in `currency_policy.py`; balances and response debit checks use the selected currency. All 16 verified shipment types are supported. Prices must remain fixed and positive, offers active and unpurchased, with no unverified purchase requirement. Mod purchases require a verified 5-star definition from the saved game snapshot and a positive Speed **secondary** from the fresh server reply. Unknown or unverified mod previews remain blocked.
 
 On a newly completed purchase the dialog displays “Transakcija uspela” for 1.4 seconds, then closes and refreshes the panel. Errors and uncertain outcomes stay open; reopening successful history does not auto-close. Native inspector 0.25.0 has the same expanded currency allowlist. Existing session expiry and explicit confirmation requirements remain unchanged.
+
+### Inventory and owned quantities
+
+Inventory snapshots contain only definition-level currencies, materials, equipment, units and mods, with decimal-string quantities (including Int64 precision) and capture time. Instance IDs and identity/authentication fields are excluded. Equipped and unequipped mods are grouped by mod definition; units are grouped by base definition. `GET /v1/inventory` and snapshot reads are account-scoped. `POST /v1/inventory/refresh` requires a control key and a valid offline direct session; it does not buy or claim anything.
+
+Direct shipment preflight and a best-effort post-purchase read save fresh inventory; failure after a confirmed purchase marks the inventory stale without changing the purchase result or repeating it. Inspector 0.26.0 captures Inventory from GetInitialData through `/api/inventory`, and the bridge preserves original capture time so an old game snapshot cannot replace a newer direct snapshot. Game-observed resource-changing operations mark the cached inventory as needing refresh.
+
+The Inventory page supports category filtering and search. Shipments show “U inventaru” by exact resource type + definition, with mod/unit canonicalization. Missing rows mean zero only in a complete captured category; unknown categories or missing source snapshots display a dash.

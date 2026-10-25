@@ -1,0 +1,8 @@
+const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../swgoh_cloud/panel/app.js'),'utf8');
+const code=source.slice(source.indexOf('const inventoryTypes='),source.indexOf('function inventoryView()'));
+function context(items=[],complete=['CURRENCY','MATERIAL','EQUIPMENT','UNIT','STATMOD']){const ctx=vm.createContext({state:{snapshots:[{topic:'inventory',source_id:'home',payload:{available:true,completeTypes:complete,items,needsRefresh:false}}]},currencies:{},time:()=>'',Intl});vm.runInContext(code,ctx);return ctx;}
+function owned(ctx,type,definition,source='home'){ctx.offer={source_id:source,reward:{type,definition}};return vm.runInContext('ownedText(offer)',ctx);}
+test('shop quantities join on type and definition, never on ID alone',()=>{const c=context([{type:'EQUIPMENT',definition:'001',quantity:'12'}]);assert.equal(owned(c,'EQUIPMENT','001'),'12');assert.equal(owned(c,'MATERIAL','001'),'0');assert.equal(owned(c,'EQUIPMENT','002'),'0');assert.equal(owned(c,'EQUIPMENT','001','other'),'—');});
+test('unknown categories are not presented as zero and precision is retained',()=>{const c=context([{type:'CURRENCY',definition:'GRIND',quantity:'9007199254740993'}],['CURRENCY']);assert.equal(owned(c,'EQUIPMENT','001'),'—');assert.equal(owned(c,'CURRENCY','GRIND').replace(/\D/g,''),'9007199254740993');});
+test('mods join by definition and stale amounts are visibly qualified',()=>{const c=context([{type:'STATMOD',definition:'252',quantity:'3'}]);assert.equal(owned(c,'STAT_MOD','252:STATMOD_TIER_03'),'3');c.state.snapshots[0].payload.needsRefresh=true;assert.equal(owned(c,'STATMOD','252:STATMOD_TIER_03'),'~ 3');});

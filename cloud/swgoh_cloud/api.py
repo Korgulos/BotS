@@ -253,4 +253,6 @@ def create_app(settings: Settings, engine=None):
     install_direct_account(app,engine,controller)
     from .direct_purchases import install as install_direct_purchases
     install_direct_purchases(app,engine,controller)
+    from .inventory import install as install_inventory
+    install_inventory(app,engine,reader,controller)
     return app

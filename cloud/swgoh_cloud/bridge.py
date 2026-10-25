@@ -141,7 +141,7 @@ def collect(local, base, key, session, outbox):
                 payload = decoded.get("details")
         topic = "guild" if service == "GuildRpc" and operation == "GetGuild" else None
         outbox.record(session,"rpc:"+str(row["id"]),service,operation,metadata,payload,topic,row.get("firstSeen"))
-    for topic,path in (("shipments","/api/shipments"),("inbox","/api/inbox"),("energy","/api/energy")):
+    for topic,path in (("shipments","/api/shipments"),("inbox","/api/inbox"),("energy","/api/energy"),("inventory","/api/inventory")):
         try:
             data = get(path)
         except (httpx.HTTPError, RuntimeError):
@@ -150,9 +150,12 @@ def collect(local, base, key, session, outbox):
             continue
         if topic == "inbox" and not data.get("captured"):
             continue
+        if topic == "inventory":
+            if not data.get("available") or not isinstance(data.get("inventory"),dict):continue
+            data={**data["inventory"],"needsRefresh":data.get("needsRefresh",False)}
         # Keep original capture time inside payload; transport polling time is not server freshness.
         data.pop("readAt",None)
-        outbox.record(session,"snapshot:"+topic,"Inspector","Snapshot",{},data,topic)
+        outbox.record(session,"snapshot:"+topic,"Inspector","Snapshot",{},data,topic,data.get("observedAt") if topic=="inventory" else None)
 
 
 def run(config, once=False):

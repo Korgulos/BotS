@@ -38,6 +38,8 @@ class DirectPurchases:
         with httpx.Client(timeout=20,trust_env=False,follow_redirects=False) as client:code,payload=receive(client,build_request(s,'GetInitialData'))
         if code!=1:raise SessionRejected()
         if initial_projection(payload)['player']['allyCode']!=s['expectedAllyCode']:raise ValueError('Account mismatch')
+        from .inventory import projection,save
+        save(self.engine,{'account_id':s['_accountId'],'source_id':s['_sourceId'],'session':session_id(s)},projection(payload))
         with self.engine.connect() as c:
             rewards=c.execute(select(db.offers.c.reward).join(db.snapshots,db.snapshots.c.event_id==db.offers.c.event_id).where(db.snapshots.c.account_id==s['_accountId'],db.snapshots.c.source_id==s['_sourceId'],db.snapshots.c.topic=='shipments')).scalars().all()
         metadata={r['definition']:r['mod'] for r in rewards if r and eligible_mod(r) and r.get('definition')}
@@ -124,7 +126,13 @@ class DirectPurchases:
                             for item in board.get('items',[]):
                                 if item.get('itemId')==q['itemId']:item['purchased']=True
                     c.execute(db.snapshots.update().where(db.snapshots.c.account_id==who['account_id'],db.snapshots.c.source_id==row['source_id'],db.snapshots.c.topic=='shipments').values(payload=payload))
-                return row
+            try:
+                self.read(s)
+            except Exception:
+                from .inventory import stale
+                try:stale(self.engine,who['account_id'],row['source_id'])
+                except Exception:pass
+            return row
         except Exception as error:return self.finish(identifier,who,'uncertain' if sending else 'failed','DIRECT_RESULT_UNCERTAIN' if sending else 'DIRECT_SESSION_REJECTED' if isinstance(error,SessionRejected) else 'DIRECT_RECHECK_FAILED')
 
 class SessionRejected(Exception):pass
