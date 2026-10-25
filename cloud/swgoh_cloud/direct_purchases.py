@@ -1,4 +1,4 @@
-"""Explicit direct Credits purchases using a bounded Render secret and durable journal."""
+"""Explicit direct shipment purchases using a bounded Render secret and durable journal."""
 from datetime import timedelta,datetime
 import copy,hashlib
 import httpx
@@ -6,6 +6,8 @@ from fastapi import Depends,HTTPException
 from sqlalchemy import select
 from . import db
 from .direct_account import config
+from .currency_policy import ALLOWED,CURRENCY_IDS,ITEM_TYPES
+from .mod_policy import is_mod,eligible_mod
 from .purchases import Prepare,Confirm,ACTIVE,fingerprint
 from .session_wire import build_request,initial_projection
 from .shipment_wire import offers,purchase_packet,receive,fields,one,child
@@ -27,7 +29,7 @@ def session(c,who):
 def status(c,who):
     try:
         s=session(c,who);offline(c,who['account_id'])
-        return {'available':True,'source_id':s['_sourceId'],'expires_at':s['_expiresAt'],'currency':'GRIND','reason':'Direktno · Credits · igra ugašena'}
+        return {'available':True,'source_id':s['_sourceId'],'expires_at':s['_expiresAt'],'currencies':sorted(ALLOWED),'reason':'Direktno · bez kristala · igra ugašena'}
     except HTTPException as e:return {'available':False,'reason':e.detail}
 
 class DirectPurchases:
@@ -36,7 +38,10 @@ class DirectPurchases:
         with httpx.Client(timeout=20,trust_env=False,follow_redirects=False) as client:code,payload=receive(client,build_request(s,'GetInitialData'))
         if code!=1:raise SessionRejected()
         if initial_projection(payload)['player']['allyCode']!=s['expectedAllyCode']:raise ValueError('Account mismatch')
-        return offers(payload)
+        with self.engine.connect() as c:
+            rewards=c.execute(select(db.offers.c.reward).join(db.snapshots,db.snapshots.c.event_id==db.offers.c.event_id).where(db.snapshots.c.account_id==s['_accountId'],db.snapshots.c.source_id==s['_sourceId'],db.snapshots.c.topic=='shipments')).scalars().all()
+        metadata={r['definition']:r['mod'] for r in rewards if r and eligible_mod(r) and r.get('definition')}
+        return offers(payload,mod_metadata=metadata)
     def quote(self,row,rows):
         expected=row['expected']
         matches=[q for q in rows if SHOPS.get(q['shipment_type'])==expected['shop'] and q['item_id']==expected['itemId']]
@@ -69,8 +74,9 @@ class DirectPurchases:
             offer=c.execute(select(db.offers).join(db.snapshots,db.snapshots.c.event_id==db.offers.c.event_id).where(db.snapshots.c.account_id==who['account_id'],db.snapshots.c.source_id==s['_sourceId'],db.snapshots.c.topic=='shipments',db.offers.c.event_id==str(data.event_id),db.offers.c.ordinal==data.ordinal)).mappings().first()
             if not offer:raise HTTPException(409,'Potrebna je trenutna lista ponuda')
             price=offer['price'] or {};reward=offer['reward'] or {};cost=price.get('minQuantity');quantity=reward.get('minQuantity')
-            if price.get('type')!='CURRENCY' or price.get('definition')!='GRIND' or reward.get('type') not in {'CURRENCY','MATERIAL','EQUIPMENT'} or offer['purchased'] is not False or type(cost) is not int or type(quantity) is not int or not 0<cost<=2147483647 or not 0<quantity<=2147483647 or cost!=price.get('maxQuantity') or quantity!=reward.get('maxQuantity') or not offer['definition']:raise HTTPException(409,'Direktno su podržane samo potvrđene Credits ponude bez modova')
-            expected=dict(shop=offer['shop'],itemId=offer['offer_id'],reward=offer['definition'],quantity=quantity,currency='GRIND',price=cost,refresh=offer['refresh'],transport='direct')
+            if price.get('type')!='CURRENCY' or price.get('definition') not in ALLOWED or str(reward.get('type','')).replace('_','') not in {name.replace('_','') for name in ITEM_TYPES if name!='EMPTY'} or offer['purchased'] is not False or type(cost) is not int or type(quantity) is not int or not 0<cost<=2147483647 or not 0<quantity<=2147483647 or cost!=price.get('maxQuantity') or quantity!=reward.get('maxQuantity') or not offer['definition']:raise HTTPException(409,'Ponuda ili valuta nisu potvrđeni; kristali i novac su blokirani')
+            if is_mod(offer['shop'],reward) and not eligible_mod(reward):raise HTTPException(409,'Dozvoljeni su samo potvrđeni modovi sa 5★ i Speed sekundarnim statom')
+            expected=dict(shop=offer['shop'],itemId=offer['offer_id'],reward=offer['definition'],quantity=quantity,currency=price['definition'],price=cost,refresh=offer['refresh'],transport='direct')
             row=dict(id=db.uid(),account_id=who['account_id'],source_id=s['_sourceId'],session=session_id(s),request_id=str(data.request_id),event_id=str(data.event_id),ordinal=data.ordinal,state='preparing',expected=expected,quote=None,quote_hash=None,code='DIRECT_CHECKING',created_at=db.now(),updated_at=db.now(),expires_at=db.now()+timedelta(seconds=60),confirmed_at=None)
             c.execute(db.purchases.insert().values(**row))
         try:
@@ -104,7 +110,7 @@ class DirectPurchases:
             delta=child(fields(payload),1);debit=child(delta,2);costs=[]
             for blob in debit.get(1,[]):
                 n=fields(blob);costs.append((one(n,1,1),one(n,2,0)))
-            if costs!=[(1,q['price'])]:raise ValueError('Debit mismatch')
+            if costs!=[(CURRENCY_IDS[q['currency']],q['price'])]:raise ValueError('Debit mismatch')
             with self.engine.begin() as c:
                 row=self.own(c,identifier,who)
                 self.update(c,row,state='succeeded',code='DIRECT_OK')

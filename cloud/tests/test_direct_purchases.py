@@ -91,3 +91,23 @@ def test_direct_restart_after_send_keeps_reservation(engine,monkeypatch):
     history=c.get('/v1/purchases',headers=o).json();assert history['commands'][0]['state']=='uncertain'
     monkeypatch.setattr(direct_purchases,'receive',lambda *args:pytest.fail('Must not resend'))
     assert c.post('/v1/direct/purchases/'+cmd['id']+'/confirm',headers=o,json=dict(confirmed=True,quote_hash=cmd['quote_hash'])).json()['state']=='uncertain'
+
+@pytest.mark.parametrize('currency,wire_id,shop',[('PVP_CURRENCY',10,'SHIPMENTPVP'),('RAID_REWARD_CURRENCY_04',46,'SHIPMENTGUILD'),('DATACRON_CURRENCY',40,'SHIPMENTDATACRON'),('ERA_UPGRADE_CURRENCY',50,'SHIPMENTERA')])
+def test_direct_other_currencies_and_stores_check_real_debit(engine,monkeypatch,currency,wire_id,shop):
+    c,o,w,r,s,b,fresh=ready(engine,monkeypatch)
+    with engine.begin() as conn:
+        conn.execute(db.offers.update().values(shop=shop,price=dict(type='CURRENCY',definition=currency,minQuantity=2700,maxQuantity=2700)))
+    fresh.update(currency=currency,shipment_type=next(k for k,v in direct_purchases.SHOPS.items() if v==shop))
+    cmd=c.post('/v1/direct/purchases/prepare',headers=o,json=b).json()
+    assert cmd['state']=='prepared',cmd
+    monkeypatch.setattr(direct_purchases,'receive',lambda *args:(1,field(1,field(2,field(1,field(1,wire_id)+field(2,2700))))))
+    result=c.post('/v1/direct/purchases/'+cmd['id']+'/confirm',headers=o,json=dict(confirmed=True,quote_hash=cmd['quote_hash'])).json()
+    assert result['state']=='succeeded' and result['quote']['currency']==currency
+
+
+def test_wrong_debit_currency_never_reported_as_success(engine,monkeypatch):
+    c,o,w,r,s,b,fresh=ready(engine,monkeypatch)
+    cmd=c.post('/v1/direct/purchases/prepare',headers=o,json=b).json()
+    monkeypatch.setattr(direct_purchases,'receive',lambda *args:(1,field(1,field(2,field(1,field(1,2)+field(2,2700))))))
+    result=c.post('/v1/direct/purchases/'+cmd['id']+'/confirm',headers=o,json=dict(confirmed=True,quote_hash=cmd['quote_hash'])).json()
+    assert result['state']=='uncertain'

@@ -13,7 +13,7 @@ from .models import StrictModel
 from .mod_policy import is_mod, eligible_mod
 from .inbox_policy import preview, message_hash
 
-ALLOWED = {'GRIND','PVP_CURRENCY','WAR_SHIP_CURRENCY','FORCE_POINT','PVP_SHIP_CURRENCY','SHARD_CURRENCY','GUILD_CURRENCY','RAID_REWARD_CURRENCY_01','RAID_REWARD_CURRENCY_02','RAID_REWARD_CURRENCY_03','EPISODE_CURRENCY','SHIP_GRIND','TERRITORY_BATTLE_CURRENCY','TERRITORY_BATTLE_CURRENCY_02','TERRITORY_BATTLE_CURRENCY_03','SOCIAL','SEASONS_CURRENCY','CONQUEST_CURRENCY','GL_EVENT_CURRENCY','ERA_CURRENCY'}
+from .currency_policy import ALLOWED
 TERMINAL = {'succeeded','failed','expired','cancelled'}
 ACTIVE = {'queued_prepare','preparing','prepared','queued_commit','sending','uncertain','checking_commit'}
 

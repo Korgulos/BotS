@@ -1,10 +1,11 @@
 """Shipment wire projection verified against runtime schema; no network executor.
-First direct trial is restricted to fixed-price Credits offers without requirements.
+Supports verified in-game currencies and fixed-price offers without requirements.
 """
 import time,zlib
 from .session_wire import fields,build_request,LIMIT
 from .direct_probe import RPC_URL
 from .direct_wire import field
+from .currency_policy import CURRENCY_IDS,ALLOWED,ITEM_TYPES
 
 def one(node,tag,default=None):
     values=node.get(tag,[])
@@ -14,9 +15,22 @@ def one(node,tag,default=None):
 def child(node,tag):return fields(one(node,tag,b''))
 def bucket(blob):
     n=fields(blob)
-    return {'definition':one(n,1,b'').decode('utf8'),'type':one(n,2,1),'min':one(n,4,0),'max':one(n,5,0)}
+    return {'definition':one(n,1,b'').decode('utf8'),'type':one(n,2,1),'min':one(n,4,0),'max':one(n,5,0),'rarity':one(n,6,1),'mod':one(n,7,None)}
 
-def offers(payload,now=None):
+def mod_eligible(reward,mod_metadata):
+    # Star count is stable definition metadata from a verified game snapshot;
+    # current Speed secondaries must also be positively present in the fresh wire reply.
+    if reward['type']!=15 or reward['mod'] is None:return False
+    metadata=mod_metadata.get(reward['definition'],{})
+    if metadata.get('verified') is not True or metadata.get('stars')!=5:return False
+    mod=fields(reward['mod']);secondaries=mod.get(13,[])
+    if not 1<=len(secondaries)<=4:return False
+    for blob in secondaries:
+        stat=child(fields(blob),2)
+        if one(stat,3,1)==5 and 0<one(stat,5,0)<2**63:return True
+    return False
+
+def offers(payload,now=None,mod_metadata=None):
     now=int(time.time()) if now is None else now
     root=fields(payload);store=child(root,18);inventory=child(root,5)
     balances={}
@@ -34,14 +48,17 @@ def offers(payload,now=None):
             if not identifier or one(item,17,0)!=0 or one(item,18,b''):continue
             if not now<refresh or one(item,15,0)>now or 0<one(item,16,0)<=now:continue
             cost=bucket(one(item,14,b''));reward=bucket(one(item,13,b''))
-            if cost['type']!=3 or cost['definition']!='GRIND' or not 0<cost['min']==cost['max']<=2147483647:continue
-            if reward['type'] not in (3,7,11) or not reward['definition'] or not 0<reward['min']==reward['max']:continue
-            if balances.get(1,0)<cost['max']:continue
-            rows.append({'shipment_type':kind,'item_id':identifier,'definition':reward['definition'],'quantity':reward['max'],'price':cost['max'],'currency':'GRIND','balance':balances[1],'refresh':refresh})
+            if cost['type']!=3 or cost['definition'] not in ALLOWED or not 0<cost['min']==cost['max']<=2147483647:continue
+            if reward['type'] not in set(ITEM_TYPES.values())-{1} or not reward['definition'] or not 0<reward['min']==reward['max']<=2147483647:continue
+            if (kind==8 or reward['type'] in (15,16,18) or ':STATMOD_' in reward['definition']) and not mod_eligible(reward,mod_metadata or {}):continue
+            currency_id=CURRENCY_IDS[cost['definition']]
+            balance=balances.get(currency_id,0)
+            if type(balance) is not int or not cost['max']<=balance<=2147483647:continue
+            rows.append({'shipment_type':kind,'item_id':identifier,'definition':reward['definition'],'quantity':reward['max'],'price':cost['max'],'currency':cost['definition'],'balance':balance,'refresh':refresh})
     return rows
 
 def purchase_packet(session,quote):
-    if quote.get('currency')!='GRIND' or not 0<quote['price']<=quote['balance']:raise ValueError('Only affordable Credits offers allowed')
+    if quote.get('currency') not in ALLOWED or not 0<quote['price']<=quote['balance']:raise ValueError('Only affordable allowed in-game currency offers allowed')
     if not 1<=quote['shipment_type']<=16 or not quote.get('item_id'):raise ValueError('Invalid offer')
     if quote['refresh']<=time.time():raise ValueError('Offer expired')
     # Reuse the verified authenticated envelope, replacing only service/method/body.

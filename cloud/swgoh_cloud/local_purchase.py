@@ -19,7 +19,9 @@ def prepare(item_id,path=STATE,journal=JOURNAL,expected_ally_code=None):
     if journal.exists():raise ValueError('Previous direct purchase journal exists; review it first')
     matches=[q for q in snapshot['data']['creditOffers'] if q['item_id']==item_id]
     if len(matches)!=1:raise ValueError('Offer not uniquely identified')
-    q=matches[0];purchase_packet(s,q)
+    q=matches[0]
+    if q.get('currency')!='GRIND':raise ValueError('Manual local trial remains Credits only; use the cloud panel for other currencies')
+    purchase_packet(s,q)
     doc={'id':str(uuid.uuid4()),'quote':q,'state':'prepared','expires':time.time()+120,'sessionCapturedAt':s['capturedAt']}
     private_write(journal,doc);return doc
 

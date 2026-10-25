@@ -243,7 +243,7 @@ def create_app(settings: Settings, engine=None):
     def capabilities(who=Depends(reader)):
         return {"mode": "inspector-observations", "standalone_game_rpc": False,
             "cloud_game_actions": True, "remote_shipments": True, "purchase_approval_required": True, "automatic_purchases": False, "crystal_spending": False,
-            "requires_game_for_fresh_data": True, "direct_credit_purchases": True, "direct_session_renewal": False}
+            "requires_game_for_fresh_data": True, "direct_credit_purchases": True, "direct_nonpremium_currencies": True, "direct_session_renewal": False}
 
     from .purchases import install
     install(app, engine, reader, controller, writer)

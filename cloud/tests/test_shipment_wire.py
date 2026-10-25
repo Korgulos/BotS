@@ -46,3 +46,36 @@ def test_purchase_lost_response_never_repeated(tmp_path):
         with pytest.raises(ValueError):commit('approval',True,path,journal,c,lambda:False)
     assert calls==[b'GetInitialData',b'BuyShipmentItem']
     assert private_read(journal)['state']=='uncertain'
+
+@pytest.mark.parametrize('currency',sorted(__import__('swgoh_cloud.currency_policy',fromlist=['ALLOWED']).ALLOWED))
+def test_each_allowed_currency_uses_its_own_balance(currency):
+    from swgoh_cloud.currency_policy import CURRENCY_IDS
+    # A balance in Credits must never cover another currency's cost.
+    data=fields(initial(currency=currency))
+    data[5]=[field(9,field(1,CURRENCY_IDS[currency])+field(2,1000))]
+    payload=b''.join(field(tag,value) for tag,values in data.items() for value in values)
+    quote=offers(payload,1000)[0]
+    assert quote['currency']==currency and quote['balance']==1000
+    if currency!='GRIND':assert offers(initial(currency=currency),1000)==[]
+
+@pytest.mark.parametrize('currency',['PREMIUM','REAL_MONEY','UNKNOWN'])
+def test_forbidden_currencies_never_produce_offers_or_packets(currency):
+    assert offers(initial(currency=currency),1000)==[]
+    quote=offers(initial(refresh=9999999999),1000)[0]
+    with pytest.raises(ValueError):purchase_packet({},dict(quote,currency=currency))
+
+def test_mod_requires_verified_five_star_definition_and_fresh_speed_secondary():
+    definition='252:STATMOD_TIER_03'
+    def payload(speed=50000,primary_only=False,kind=8):
+        mod=field(2,'252')+field(12 if primary_only else 13,field(2,field(3,5)+field(5,speed)))
+        reward=field(1,definition)+field(2,15)+field(4,1)+field(5,1)+field(7,mod)
+        cost=field(1,'GRIND')+field(2,3)+field(4,100)+field(5,100)
+        board=field(1,kind)+field(3,2000)+field(2,field(12,'mod1')+field(13,reward)+field(14,cost))
+        return field(18,field(10,board))+field(5,field(9,field(1,1)+field(2,1000)))
+    metadata={definition:{'verified':True,'stars':5}}
+    assert len(offers(payload(),1000,metadata))==1
+    assert offers(payload(),1000)==[]
+    assert offers(payload(),1000,{definition:{'verified':True,'stars':4}})==[]
+    assert offers(payload(speed=0),1000,metadata)==[]
+    assert offers(payload(primary_only=True),1000,metadata)==[]
+    assert offers(payload(),1000,{'different-mod':metadata[definition]})==[]
