@@ -249,4 +249,6 @@ def create_app(settings: Settings, engine=None):
     install(app, engine, reader, controller, writer)
     from .direct_probe import install as install_direct_probe
     install_direct_probe(app,controller)
+    from .direct_account import install as install_direct_account
+    install_direct_account(app,engine,controller)
     return app

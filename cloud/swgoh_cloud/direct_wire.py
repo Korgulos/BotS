@@ -16,8 +16,8 @@ def field(tag,value):
     value=value.encode() if isinstance(value,str) else value
     return varint((tag<<3)|2)+varint(len(value))+value
 
-def fields(data):
-    if len(data)>LIMIT:raise ValueError('Message too large')
+def fields(data,max_bytes=LIMIT):
+    if len(data)>max_bytes:raise ValueError('Message too large')
     pos=0;result={};count=0
     def read():
         nonlocal pos
