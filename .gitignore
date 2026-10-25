@@ -1,30 +1,71 @@
-# Python environments and caches
+# Task scratch space, downloaded runtimes, SDKs and temporary captures
+/work/
+
+# Python virtual environments
 .venv/
+.venv-*/
 venv/
+venv-*/
+env/
+.tox/
+.nox/
+
+# Python bytecode, tooling caches and test reports
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.pyre/
+.hypothesis/
 .coverage
 .coverage.*
 htmlcov/
+coverage.xml
+junit.xml
 
-# Local runtime database (keep schema and seed SQL in Git)
-/agent.sqlite3
-/agent.sqlite3-*
-/agent.sqlite3-journal
+# Build artifacts and package metadata
+/build/
+/dist/
+*.egg-info/
+.eggs/
+node_modules/
+
+# Local IDE settings and editor temporary files
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Local runtime state and databases (SQL schemas/seeds remain tracked)
+.state/
+*.local.json
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
 
 # Runtime logs and observations
+*.log
 /logs/*
 !/logs/.gitkeep
 
-# Temporary captures and local archive
+# Temporary captures and local archives
 /last_screen.png
 *.xwd
 /files.zip
 
-# Local secrets
+# Local secrets; retain placeholder examples
 .env
 .env.*
 !.env.example
+!**/.env.example
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
