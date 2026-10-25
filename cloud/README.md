@@ -224,3 +224,5 @@ this filtering. Restart the game after installing inspector 0.18.0.
 ### Inbox Claim preko panela
 
 Control ključ može da pripremi jednu podržanu rang nagradu iz trenutnog inbox snimka. Bridge proverava isti snimak i priloge u lokalnom inspectoru. Native reference i approval token ostaju lokalno. Panel prikazuje tačne priloge i traži zasebnu potvrdu u roku od 30 sekundi. Primanje PREMIUM je dozvoljeno; trošenje crystals ostaje blokirano. Dismiss, posebne poruke, kuponi i entitlement tokovi nisu podržani. Jedan zajednički red serijalizuje kupovine i Claim; nepoznat ishod blokira sledeće akcije. Posle prekida/restarta proverava se status i ne ponavlja native commit. Nova native DLL nije potrebna (postojeće inbox Claim rute); restart bridge-a učitava novi worker.
+
+Inspector 0.19.0 dodaje Claim za tačno proverene parove tip/naslov: PARAMETERIZED + RAID_REWARD_SUBJECT_KEY, GUILDRANKEDREWARD + GUILD_CHALLENGE_REWARD_SUBJECT_KEY, TERRITORYWARCOMPLETEREWARD + TERRITORY_WAR_SECOND_PLACE_SUBJECT_KEY. Ostale PARAMETERIZED poruke ostaju blokirane. Važe iste provere priloga, vremena, posebnih tokova i eksplicitne potvrde. Potreban je restart igre posle zamene DLL.

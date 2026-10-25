@@ -18,9 +18,12 @@ def fixture(engine):
         x.execute(db.snapshots.insert().values(**{**snap,'topic':'inbox','payload':{'inbox':{'messages':[message]}}}))
     return c,o,w,r,b,source,message
 
+@pytest.mark.parametrize('type_subject',[('RANK_REWARDS','RANK_SUBJECT'),('PARAMETERIZED','RAID_REWARD_SUBJECT_KEY'),('GUILDRANKEDREWARD','GUILD_CHALLENGE_REWARD_SUBJECT_KEY'),('TERRITORYWARCOMPLETEREWARD','TERRITORY_WAR_SECOND_PLACE_SUBJECT_KEY')])
 @pytest.mark.parametrize('lost',['native_commit','cloud_claim','changed_preview'])
-def test_inbox_claim_confirmation_and_restart_never_replays(engine,tmp_path,lost):
+def test_inbox_claim_confirmation_and_restart_never_replays(engine,tmp_path,lost,type_subject):
     c,o,w,r,b,source,m=fixture(engine)
+    m['type'],m['subjectKey']=type_subject
+    with engine.begin() as x:x.execute(db.snapshots.update().where(db.snapshots.c.topic=='inbox').values(payload={'inbox':{'messages':[m]}}))
     assert c.post('/v1/inbox/prepare',headers=r,json=b).status_code==403
     cmd=c.post('/v1/inbox/prepare',headers=o,json=b).json()
     assert cmd['expected']['preview']['rewards'][0]['definition']=='PREMIUM'
@@ -69,5 +72,12 @@ def test_inbox_claim_confirmation_and_restart_never_replays(engine,tmp_path,lost
 def test_special_messages_blocked(engine,field,value):
     c,o,w,r,b,source,m=fixture(engine)
     m[field]=value
+    with engine.begin() as x:x.execute(db.snapshots.update().where(db.snapshots.c.topic=='inbox').values(payload={'inbox':{'messages':[m]}}))
+    assert c.post('/v1/inbox/prepare',headers=o,json=b).status_code==409
+
+@pytest.mark.parametrize('kind',['PARAMETERIZED','GUILDRANKEDREWARD','TERRITORYWARCOMPLETEREWARD'])
+def test_unknown_subject_blocked(engine,kind):
+    c,o,w,r,b,source,m=fixture(engine)
+    m.update(type=kind,subjectKey='UNVERIFIED_SUBJECT')
     with engine.begin() as x:x.execute(db.snapshots.update().where(db.snapshots.c.topic=='inbox').values(payload={'inbox':{'messages':[m]}}))
     assert c.post('/v1/inbox/prepare',headers=o,json=b).status_code==409
