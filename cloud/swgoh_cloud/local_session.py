@@ -48,8 +48,9 @@ def capture(config,path=STATE):
 
 from .session_wire import build_request,initial_projection
 
-def run(operation,path=STATE,client=None,running=game_running,allow_read_retry=False):
+def run(operation,path=STATE,client=None,running=game_running,allow_read_retry=False,phase="initial"):
     if running():raise ValueError('Close SWGoH before direct session tests')
+    if phase not in {'initial','ea-app-closed'} or phase!='initial' and operation not in {'Ping','IsSessionActive'}:raise ValueError('Unsupported read-only check phase')
     path=Path(path)
     lock=os.open(path.with_name(path.name+'.lock'),os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
     try:
@@ -57,14 +58,16 @@ def run(operation,path=STATE,client=None,running=game_running,allow_read_retry=F
         s=private_read(path)
         if not s.get('requestToken') and not s.get('hasNextRequestToken'):s['requestTokenMode']='absent'
         age=(datetime.now(timezone.utc)-datetime.fromisoformat(s['capturedAt'])).total_seconds()
-        if age<0 or age>600:raise ValueError('Local test session expired; capture a fresh session')
+        if age<0 or age>600:raise ValueError('Local test window expired; capture a fresh session')
         read_retry=allow_read_retry and operation=='GetInitialData' and s.get('requestTokenMode')=='absent' and s.get('lastSuccess')=='Ping' and s.get('localState')=='uncertain' and not s.get('initialReadRetry')
-        if (s.get('localState')!='ready' or operation in s.get('usedOperations',[])) and not read_retry:raise ValueError('Previous attempt cannot be repeated; capture a new session')
+        phase_key=phase+':'+operation
+        named_check=phase=='ea-app-closed' and s.get('requestTokenMode')=='absent' and s.get('localState')=='ready' and 'Ping' in s.get('successfulOperations',[]) and phase_key not in s.get('phaseAttempts',[])
+        if (s.get('localState')!='ready' or operation in s.get('usedOperations',[])) and not (read_retry or named_check):raise ValueError('Previous attempt cannot be repeated; capture a new session')
         if read_retry:s['initialReadRetry']=1
-        if operation=='GetInitialData' and s.get('lastSuccess')!='Ping':raise ValueError('Successful direct Ping required first')
+        if operation=='GetInitialData' and s.get('lastSuccess')!='Ping' and 'Ping' not in s.get('successfulOperations',[]):raise ValueError('Successful direct Ping required first')
         if not s.get('hasNextRequestToken') and not (s.get('requestTokenMode')=='absent' and not s.get('requestToken')):raise ValueError('Next-request token not verified; direct test blocked')
         packet=build_request(s,operation)
-        s['localState']='sending';s['usedOperations'].append(operation);private_write(path,s)
+        s['localState']='sending';s['usedOperations'].append(operation);s.setdefault('phaseAttempts',[]).append(phase_key);private_write(path,s)
         stage='connect';received=False
         own=client is None
         c=client or httpx.Client(timeout=15,follow_redirects=False,trust_env=False)
@@ -93,11 +96,15 @@ def run(operation,path=STATE,client=None,running=game_running,allow_read_retry=F
             if code!=1:
                 s['localState']='rejected';private_write(path,s);return {'operation':operation,'rpc_code':code,'success':False,'retry_allowed':False}
             stage='decode_payload';decoded=fields(payload)
-            s['localState']='ready' if next_token or (s.get('requestTokenMode')=='absent' and not s.get('requestToken')) else 'no_next_token';s['lastSuccess']=operation
+            s['localState']='ready' if next_token or (s.get('requestTokenMode')=='absent' and not s.get('requestToken')) else 'no_next_token';s['lastSuccess']=operation;s.setdefault('successfulOperations',[]).append(operation)
             if next_token:s['requestToken']=next_token.decode();s['hasNextRequestToken']=True
             private_write(path,s)
-            result={'operation':operation,'rpc_code':code,'success':True,'payload_bytes':len(payload),'next_token_received':bool(next_token)}
+            result={'operation':operation,'rpc_code':code,'success':True,'payload_bytes':len(payload),'next_token_received':bool(next_token),'capture_age_seconds':round(age)}
             if operation=='Ping':result['system_time']=decoded.get(1,[None])[0]
+            elif operation=='IsSessionActive':
+                values=decoded.get(1,[0])
+                if len(values)!=1 or type(values[0]) is not int or values[0] not in (0,1):raise ValueError('Invalid active flag')
+                result['active']=bool(values[0])
             else:
                 # Private payload saved locally; no raw data or account fields in stdout.
                 out=path.with_name('initial-data.local.json');stage='project_initial';projection=initial_projection(payload)
@@ -115,10 +122,10 @@ def run(operation,path=STATE,client=None,running=game_running,allow_read_retry=F
     finally:os.close(lock)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['capture','ping','initial-data']);p.add_argument('--retry-read-only-initial',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['capture','ping','initial-data','session-check']);p.add_argument('--phase',choices=['initial','ea-app-closed'],default='initial');p.add_argument('--retry-read-only-initial',action='store_true');a=p.parse_args()
     try:
         if a.action=='capture':result=capture(json.loads((STATE.parent/'bridge.local.json').read_text()))
-        else:result=run('Ping' if a.action=='ping' else 'GetInitialData',allow_read_retry=a.retry_read_only_initial)
+        else:result=run('Ping' if a.action=='ping' else 'IsSessionActive' if a.action=='session-check' else 'GetInitialData',allow_read_retry=a.retry_read_only_initial,phase=a.phase)
         print(json.dumps(result))
     except Exception as e:
         print(json.dumps({'success':False,'error_type':type(e).__name__,'message':str(e) if isinstance(e,ValueError) else 'Local session operation unavailable'}))

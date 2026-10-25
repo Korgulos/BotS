@@ -4,17 +4,19 @@ from datetime import datetime,timezone
 from .direct_wire import field,fields as wire_fields
 from .direct_probe import RPC_URL
 LIMIT=32*1024*1024
+SESSION_SCHEMA_VERIFIED=True # Runtime export: empty request, response active bool = 1.
 INITIAL_SCHEMA_VERIFIED=True
 def fields(data):return wire_fields(data,max_bytes=LIMIT)
 def build_request(s,operation):
-    if operation not in {'Ping','GetInitialData'}:raise ValueError('Read-only operation not allowed')
+    if operation not in {'Ping','GetInitialData','IsSessionActive'}:raise ValueError('Read-only operation not allowed')
+    if operation=='IsSessionActive' and not SESSION_SCHEMA_VERIFIED:raise ValueError('Session check wire schema not verified')
     if operation=='GetInitialData' and not INITIAL_SCHEMA_VERIFIED:raise ValueError('InitialDataRequest schema must be verified first')
-    payload=b'' if operation=='Ping' else field(1,0)
+    payload=field(1,0) if operation=='GetInitialData' else b''
     age=(datetime.now(timezone.utc)-datetime.fromisoformat(s['capturedAt'])).total_seconds()
     client_time=s.get('clientTime',0)
     if client_time<=0:raise ValueError('Client time baseline is missing')
     current=client_time+int(age*(1000 if client_time>100000000000 else 1))
-    parts=[field(1,1),field(4,'PlayerRpc'),field(5,operation),field(6,payload),field(7,s['authId']),field(8,s['authToken']),field(16,str(uuid.uuid4())),field(20,current)]
+    parts=[field(1,1),field(4,'AuthRpc' if operation=='IsSessionActive' else 'PlayerRpc'),field(5,operation),field(6,payload),field(7,s['authId']),field(8,s['authToken']),field(16,str(uuid.uuid4())),field(20,current)]
     for name,tag in [('clientVersion',9),('clientStartupTimestamp',11),('platform',12),('region',13),('clientExternalVersion',14),('clientInternalVersion',15),('requestToken',36),('application',37),('contentNamespace',50),('timezone',22),('timezoneOffsetSec',41)]:
         value=s.get(name)
         if value and (not isinstance(value,int) or value>=0):parts.append(field(tag,value))
@@ -65,6 +67,10 @@ def exchange(session,operation,client):
     result={'operation':operation,'rpc_code':code,'success':code==1,'payload_bytes':len(payload)}
     if code!=1:return result
     if operation=='Ping':result['system_time']=fields(payload).get(1,[None])[0]
+    elif operation=='IsSessionActive':
+        values=fields(payload).get(1,[0])
+        if len(values)!=1 or type(values[0]) is not int or values[0] not in (0,1):raise ValueError('Invalid active flag')
+        result['active']=bool(values[0])
     else:
         projection=initial_projection(payload)
         if projection['player']['allyCode']!=session.get('expectedAllyCode'):raise ValueError('Account mismatch')

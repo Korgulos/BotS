@@ -47,3 +47,22 @@ def test_initial_projection_excludes_identity_tokens_and_personal_extras():
     assert result['player']['allyCode']==392189647 and result['currencies'][0]['quantity']==220
     assert result['inventory']['units']==1 and result['inbox'][0]['subjectKey']=='REWARD_SUBJECT'
     assert 'PRIVATE' not in str(result) and 'SECRET' not in str(result)
+
+def test_session_check_uses_auth_rpc_and_returns_boolean(tmp_path):
+    from swgoh_cloud.session_wire import build_request
+    p=tmp_path/'session.json';private_write(p,session())
+    packet=fields(build_request(session(),'IsSessionActive'))
+    assert packet[4]==[b'AuthRpc'] and packet[5]==[b'IsSessionActive'] and packet[6]==[b'']
+    with pytest.raises(ValueError):build_request(session(),'DoAuthByRefreshToken')
+    with httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(200,content=field(5,1)+field(13,'ROTATED_PRIVATE')+field(4,field(1,1))))) as c:
+        result=run('IsSessionActive',p,c,running=lambda:False)
+        assert result['success'] and result['active'] is True
+        assert 'PRIVATE' not in str(result) and result['capture_age_seconds']>=0
+
+def test_named_session_phase_can_run_once_after_success_and_not_after_uncertainty(tmp_path):
+    p=tmp_path/'session.json';s=session();s.update(usedOperations=['Ping'],successfulOperations=['Ping'],requestTokenMode='absent',requestToken='',hasNextRequestToken=False);private_write(p,s)
+    with httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(200,content=field(5,1)+field(4,field(1,123))))) as c:
+        assert run('Ping',p,c,running=lambda:False,phase='ea-app-closed')['success']
+        with pytest.raises(ValueError):run('Ping',p,c,running=lambda:False,phase='ea-app-closed')
+    s.update(localState='uncertain');private_write(p,s)
+    with pytest.raises(ValueError):run('Ping',p,running=lambda:False,phase='ea-app-closed')
