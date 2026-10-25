@@ -62,6 +62,19 @@ battles = Table("battles", meta,
     Column("battle_type", String(80)), Column("seed", String(32)), Column("outcome", String(80)),
     Column("record_count", Integer), Column("records_shown", Integer), Column("truncated", Boolean, nullable=False))
 version = Table("schema_version", meta, Column("version", Integer, primary_key=True))
+agents = Table("bridge_status", meta,
+    Column("source_id", ForeignKey("sources.id"), primary_key=True),
+    Column("session", String(64), nullable=False), Column("last_seen", DateTime(timezone=True), nullable=False),
+    Column("online", Boolean, nullable=False), Column("purchases_enabled", Boolean, nullable=False))
+purchases = Table("purchase_commands", meta,
+    Column("id", String(36), primary_key=True), Column("account_id", ForeignKey("accounts.id"), nullable=False),
+    Column("source_id", ForeignKey("sources.id"), nullable=False), Column("session", String(64), nullable=False),
+    Column("request_id", String(36), nullable=False), Column("event_id", String(36), nullable=False), Column("ordinal", Integer, nullable=False),
+    Column("state", String(24), nullable=False), Column("expected", json_type, nullable=False),
+    Column("quote", json_type), Column("quote_hash", String(64)), Column("code", String(160)),
+    Column("created_at", DateTime(timezone=True), nullable=False), Column("updated_at", DateTime(timezone=True), nullable=False),
+    Column("expires_at", DateTime(timezone=True), nullable=False), Column("confirmed_at", DateTime(timezone=True)),
+    UniqueConstraint("account_id", "request_id"))
 
 
 def engine_for(url):
@@ -78,7 +91,9 @@ def migrate(engine):
         conn.execute(text("SELECT pg_advisory_xact_lock(743602941)"))
         meta.create_all(conn)
         found = conn.execute(version.select()).scalars().all()
-        if found and found != [1]:
+        if found and found not in ([1], [2]):
             raise RuntimeError("Unsupported database schema version")
         if not found:
-            conn.execute(version.insert().values(version=1))
+            conn.execute(version.insert().values(version=2))
+        elif found == [1]:
+            conn.execute(version.update().values(version=2))

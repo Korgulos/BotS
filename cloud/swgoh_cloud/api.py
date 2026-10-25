@@ -101,8 +101,13 @@ def create_app(settings: Settings, engine=None):
         return dict(row)
 
     def reader(who=Depends(identity)):
-        if who["role"] != "read":
+        if who["role"] not in {"read", "control"}:
             raise HTTPException(403, "Read credential required")
+        return who
+
+    def controller(who=Depends(identity)):
+        if who["role"] != "control":
+            raise HTTPException(403, "Za kupovinu je potreban poseban control ključ")
         return who
 
     def writer(who=Depends(identity)):
@@ -153,6 +158,13 @@ def create_app(settings: Settings, engine=None):
             if not result.rowcount:
                 raise HTTPException(404, "Credential not found")
         return {"revoked": True}
+
+    @app.post("/v1/accounts/{account_id}/control-key", dependencies=[Depends(require_admin)])
+    def control_key(account_id: str):
+        with engine.begin() as conn:
+            if conn.execute(select(db.accounts.c.id).where(db.accounts.c.id == account_id)).first() is None:
+                raise HTTPException(404, "Account not found")
+            return {"control_token": issue_key(conn, account_id, "control")}
 
     @app.get("/v1/accounts", dependencies=[Depends(require_admin)])
     def list_accounts():
@@ -230,7 +242,9 @@ def create_app(settings: Settings, engine=None):
     @app.get("/v1/capabilities")
     def capabilities(who=Depends(reader)):
         return {"mode": "inspector-observations", "standalone_game_rpc": False,
-            "cloud_game_actions": False, "automatic_purchases": False, "crystal_spending": False,
+            "cloud_game_actions": True, "remote_shipments": True, "purchase_approval_required": True, "automatic_purchases": False, "crystal_spending": False,
             "requires_game_for_fresh_data": True}
 
+    from .purchases import install
+    install(app, engine, reader, controller, writer)
     return app

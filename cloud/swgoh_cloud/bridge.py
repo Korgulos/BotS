@@ -180,6 +180,8 @@ def run_locked(config, once=False):
     if len(config.get("ingest_token", "")) < 32:
         raise ValueError("Configure the source ingest token")
     outbox = Outbox(config["outbox_path"])
+    from .purchase_worker import PurchaseWorker
+    worker = PurchaseWorker(outbox.conn)
     try:
         with httpx.Client(timeout=30, follow_redirects=False, trust_env=False) as client:
             while True:
@@ -188,9 +190,12 @@ def run_locked(config, once=False):
                     outbox.flush(client,cloud,config["ingest_token"])
                 except (httpx.HTTPError, RuntimeError):
                     print("Cloud upload unavailable; queued observations retained", flush=True)
+                online=False
+                base=key=session=None
                 try:
                     base,key,session=inspector_address(config["inspector_url_file"])
                     collect(client,base,key,session,outbox)
+                    online=True
                 except (OSError, httpx.HTTPError, RuntimeError, ValueError):
                     print("Inspector unavailable; stored cloud snapshots remain historical", flush=True)
                 try:
@@ -199,6 +204,11 @@ def run_locked(config, once=False):
                         print(f"Acknowledged {sent} observations",flush=True)
                 except (httpx.HTTPError, RuntimeError):
                     print("Cloud upload unavailable; queued observations retained",flush=True)
+                if session is not None:
+                    try:
+                        worker.tick(client,cloud,config["ingest_token"],base,key,session,online,config.get("enable_purchases") is True)
+                    except (httpx.HTTPError, RuntimeError, ValueError, KeyError):
+                        print("Purchase channel unavailable; no native commit is retried",flush=True)
                 if once:
                     break
                 time.sleep(max(2, min(int(config.get("interval_seconds",5)),60)))

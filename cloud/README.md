@@ -1,9 +1,10 @@
-# SWGoH Cloud — observation backend 0.1
+# SWGoH Cloud — observation and approved purchases 0.2
 
 FastAPI + PostgreSQL, intended for the confirmed Render workspace **Swgoh bot**.
 This starts the cloud part with a working historical SQL store and local uploader.
-The game still needs to run to collect new observations. This release does not log
-into EA, send game RPCs from the cloud, execute remote purchases/Claims, or schedule
+The game still needs to run to collect new observations. Approved remote shipment purchases use the running game through the local bridge.
+This release does not log
+into EA, send game RPCs from the cloud, execute Claims, or schedule
 game actions. The existing in-game inspector continues handling approved actions.
 
 ## Data path
@@ -40,7 +41,7 @@ revoked by an administrator; values are returned only during initial issuance.
 - `battles`: phase, type, seed, outcome and capture-completeness metadata. Start and
   Finish are not automatically asserted to match based on seed alone.
 
-`schema.sql` is the generated PostgreSQL DDL. Startup runs version 1 migrations
+`schema.sql` is the generated PostgreSQL DDL. Startup runs version 2 additive migrations
 under an advisory transaction lock. Each ingest batch commits atomically. Repeated
 uploads are acknowledged without duplicate rows, including when the initial ACK
 was lost. Enriched revisions update their projections in the same transaction.
@@ -162,8 +163,8 @@ private `cloud/.state/reader.local.json` file. The token is held only in tab mem
 never localStorage, cookies or the URL. The panel reads the API on the same origin
 and refreshes every 15 seconds while visible. It shows all shipment offers from
 the latest snapshot (with search, currency/shop filters and pagination), inbox,
-energy windows, guild members, battles and individual RPC details. No game
-actions or admin operations are exposed. Log out before sharing the screen.
+energy windows, guild members, battles and individual RPC details. Shipment purchases require a separate control credential and explicit confirmation.
+No Claim, refresh or admin operations are exposed. Log out before sharing the screen.
 
 ## Automatic game startup (Linux desktop)
 
@@ -185,3 +186,25 @@ To view startup logs (no inspector URLs or credentials are logged):
 ```bash
 journalctl --user -u swgoh-inspector-bridge.service -f
 ```
+
+## Approved remote shipments
+
+A `control` key grants reads plus preparing/confirming one shipment purchase. The
+existing `read` key remains read-only. Admins issue control keys through
+`POST /v1/accounts/{account_id}/control-key`. Store the returned value privately in
+`cloud/.state/controller.local.json`, then load that file in the panel.
+
+Set `enable_purchases: true` in the private bridge config to opt that device in.
+The device sends a heartbeat; stale/offline devices cannot receive confirmations.
+The server selects an offer from the latest account/source snapshot, never accepts
+a client-provided price, blocks PREMIUM/unknown currencies and serializes active
+purchases per account. The native controller rechecks the actual offer and balance.
+A 30-second quote must be explicitly confirmed in the panel before commit.
+
+The SQLite purchase journal saves the native token locally, never to Render/Neon.
+It commits a `committing` record before the native commit POST. After timeout, crash
+or restart, only GET status checks are allowed, never another commit POST. Unknown
+outcomes block new commands; they are not silently retried or treated as failures.
+A game restart invalidates old preparations. Cloud receipt/report retries are
+idempotent; completed purchases retain an audit record. No bridge listener is
+exposed to the Internet and no game authentication credentials leave the PC.
