@@ -90,24 +90,27 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
 document.addEventListener('change',async e=>{if(e.target.id!=='inbox-auto')return;const input=e.target;input.disabled=true;try{await purchasePost('/v1/inbox/automation',{enabled:input.checked});await refresh();}catch(e){input.checked=!input.checked;$('#error').textContent=e.message;$('#error').hidden=false;}finally{input.disabled=!state.purchases.can_purchase;}});
 
 const tbOpenMembers=new Set();
+let tbDeployAscending=false;
+function tbRunLabel(p){const name=p.definition==='t05D'?'Rise of the Empire':p.definition;let start=p.battleStart,estimated=false;if(!start&&p.phaseEnd&&p.phase){start=Number(p.phaseEnd)-Number(p.phase)*86400000;estimated=true}const date=start?new Date(Number(start)):null;return name+' · početak: '+(date&&!Number.isNaN(date.getTime())?date.toLocaleDateString('sr-Latn')+(estimated?' (procena)':''):'nije zabeležen')+' · '+p.battleKey.slice(0,8)}
+function tbSortedRows(rows){return [...rows].sort((a,b)=>{const av=a.deployedGP,bv=b.deployedGP;if(av==null)return bv==null?0:1;if(bv==null)return -1;const x=BigInt(av),y=BigInt(bv);return (x<y?-1:x>y?1:0)*(tbDeployAscending?1:-1)})}
 function tbEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function tbNum(x){try{return x===null||x===undefined?'—':new Intl.NumberFormat('sr-Latn').format(BigInt(x))}catch{return '—'}}
 function tbBool(x){return x===true?'Da':x===false?'Ne':'—'}
 function tbMarkup(records,runKey,phase,all){
- const runs=[...new Map(records.map(r=>[r.payload.battleKey,{key:r.payload.battleKey,definition:r.payload.definition}])).values()];
+ const runs=[...new Map(records.map(r=>[r.payload.battleKey,{key:r.payload.battleKey,definition:r.payload.definition,label:tbRunLabel(r.payload)}])).values()];
  if(!runs.length)return '<p class="hint">Još nema TB snimka. Otvori gild i TB statistike u igri.</p>';
  const key=runs.some(r=>r.key===runKey)?runKey:runs[0].key;
  const selected=records.filter(r=>r.payload.battleKey===key);const active=phase||Math.max(...selected.map(r=>r.payload.phase));
  const p=selected.find(r=>r.payload.phase===active)?.payload;const phases=Array.from({length:6},(_,i)=>i+1);
  const states={live:'U toku',final:'Završni odgovor',closed_last_seen:'Zatvorena · poslednji snimak'};
- let html='<h2>Territory Battle · učinak članova</h2><label>TB događaj <select id="tb-run">'+runs.map(r=>'<option value="'+tbEsc(r.key)+'" '+(key===r.key?'selected':'')+'>'+tbEsc(r.definition)+' · '+tbEsc(r.key.slice(0,8))+'</option>').join('')+'</select></label><div class="toolbar">'+phases.map(n=>{let rec=selected.find(r=>r.payload.phase===n)?.payload;return '<button data-tb-phase="'+n+'" '+(active===n?'class="chosen active"':'')+'>Faza '+n+' · '+(rec?tbEsc(states[rec.state]||rec.state):'Nema snimka')+'</button>'}).join('')+'</div>';
+ let html='<h2>Territory Battle · učinak članova</h2><label>TB događaj <select id="tb-run">'+runs.map(r=>'<option value="'+tbEsc(r.key)+'" '+(key===r.key?'selected':'')+'>'+tbEsc(r.label)+'</option>').join('')+'</select></label><div class="toolbar">'+phases.map(n=>{let rec=selected.find(r=>r.payload.phase===n)?.payload;return '<button data-tb-phase="'+n+'" '+(active===n?'class="chosen active"':'')+'>Faza '+n+' · '+(rec?tbEsc(states[rec.state]||rec.state):'Nema snimka')+'</button>'}).join('')+'</div>';
  if(!p)return html+'<p class="hint">Za ovu fazu nema sačuvanog odgovora. Buduće faze se ne popunjavaju nulama.</p>';
- html+='<p>'+tbEsc(states[p.state]||p.state)+' · Statistike: '+tbEsc(p.statsObservedAt?new Date(p.statsObservedAt).toLocaleString():'nisu očitane')+' · '+p.rows.length+' članova</p><label><input type="checkbox" id="tb-all" '+(all?'checked':'')+'> Sve statističke kolone faze ('+p.columns.length+')</label>';
+ html+='<p><strong>'+tbEsc(tbRunLabel(p))+'</strong></p><p>'+tbEsc(states[p.state]||p.state)+' · Statistike: '+tbEsc(p.statsObservedAt?new Date(p.statsObservedAt).toLocaleString():'nisu očitane')+' · '+p.rows.length+' članova</p><label><input type="checkbox" id="tb-all" '+(all?'checked':'')+'> Sve statističke kolone faze ('+p.columns.length+')</label>';
  if(p.truncated)html+='<p class="error">Odgovor je skraćen. Nedostajuće vrednosti nisu nule.</p>';
- const columns=all?p.columns:['territoryPoints','deployedGP','undeployedGP','waves','combatAttempts','donatedUnits','played','deployed','donated'];
+ const columns=all?['deployedGP',...p.columns]:['deployedGP','undeployedGP','territoryPoints','waves','combatAttempts','donatedUnits','played','deployed','donated'];
  const labels={territoryPoints:'Territory points',deployedGP:'Deployed GP',undeployedGP:'Undeployed GP*',waves:'Talasi',combatAttempts:'Borbeni pokušaji',donatedUnits:'Donirane jedinice',played:'Igrao misiju',deployed:'Rasporedio GP',donated:'Donirao'};
- html+='<div class="table-wrap" data-tb-scroll style="overflow:auto"><table><thead><tr><th>Član</th>'+columns.map(c=>'<th>'+tbEsc(labels[c]||c)+'</th>').join('')+'<th>Svi podaci / misije</th></tr></thead><tbody>';
- for(const row of p.rows){html+='<tr><td><strong>'+tbEsc(row.name||'Član bez imena')+'</strong></td>'+columns.map(c=>'<td>'+tbEsc(['played','deployed','donated'].includes(c)?tbBool(row[c]):tbNum(all?row.values[c]:row[c]))+'</td>').join('');
+ html+='<div class="table-wrap" data-tb-scroll style="overflow:auto"><table><thead><tr><th>Član</th>'+columns.map(c=>'<th'+(c==='deployedGP'?' aria-sort="'+(tbDeployAscending?'ascending':'descending')+'"':'')+'>'+(c==='deployedGP'?'<button class="text-button" data-tb-sort="deployedGP">Deployed GP '+(tbDeployAscending?'↑':'↓')+'</button>':tbEsc(labels[c]||c))+'</th>').join('')+'<th>Svi podaci / misije</th></tr></thead><tbody>';
+ for(const row of tbSortedRows(p.rows)){html+='<tr><td><strong>'+tbEsc(row.name||'Član bez imena')+'</strong></td>'+columns.map(c=>'<td>'+tbEsc(['played','deployed','donated'].includes(c)?tbBool(row[c]):tbNum(all&&c!=='deployedGP'?row.values[c]:row[c]))+'</td>').join('');
  html+='<td><details data-tb-member="'+tbEsc(row.memberKey)+'" '+(tbOpenMembers.has(row.memberKey)?'open':'')+'><summary>Statistike i statusi ('+Object.keys(row.values).length+')</summary><p>GP u snimku: '+tbNum(row.galacticPower)+'</p><table><tr><th>Misija / zona</th><th>Server rezultat</th><th>Pokušano</th><th>Pređeno</th></tr>'+row.missions.map(m=>'<tr><td>'+tbEsc(m.zone)+'</td><td>'+tbEsc(m.result)+'</td><td>'+tbBool(m.attempted)+'</td><td>'+tbBool(m.completed)+'</td></tr>').join('')+'</table><table>'+p.columns.map(c=>'<tr><td>'+tbEsc(c)+'</td><td>'+tbNum(row.values[c])+'</td></tr>').join('')+'</table></details></td></tr>';}
  return html+'</tbody></table></div><p class="hint">— znači da podatak nije dostupan. Pređeno/Ne koristi eksplicitni rezultat specijalne misije; broj talasa ne dokazuje da je svaka borba završena. *Undeployed GP je izveden iz GP-a sačuvanog uz ovu fazu i deployed GP-a; može odstupati od zaključanog TB rostera. Završni odgovor označava istorijske podatke dobijene u sledećoj fazi ili rezultatu TB-a. Ako je kraj propušten, ostaje oznaka poslednjeg snimka.</p>';
 }
@@ -141,3 +144,5 @@ document.addEventListener('change',e=>{if(e.target.id==='tb-run'){tbSelectedRun=
  new MutationObserver(schedule).observe(document.querySelector('main')||document.body,{childList:true,subtree:true});
  addEventListener('scroll',schedule,{passive:true,capture:true});addEventListener('resize',schedule);schedule();
 })();
+
+document.addEventListener('click',e=>{if(e.target.closest('[data-tb-sort]')){tbDeployAscending=!tbDeployAscending;render();}});
