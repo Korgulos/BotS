@@ -49,13 +49,15 @@ class Outbox:
           CREATE TABLE IF NOT EXISTS checkpoints (
             session TEXT, name TEXT, digest TEXT, revision INTEGER, observed_at TEXT,
             PRIMARY KEY(session,name));
+          CREATE TABLE IF NOT EXISTS conflicting_observations (
+            id INTEGER PRIMARY KEY, body TEXT NOT NULL, reason TEXT NOT NULL, retained_at TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS outbox (
             id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL);
         ''')
 
     def record(self, session, name, service, operation, metadata, payload, topic=None, observed_at=None):
         payload = sanitize(payload); metadata = sanitize(metadata)
-        check_tree(payload); check_tree(metadata)
+        check_tree(payload,budget=[120000] if topic=="territory" else None); check_tree(metadata)
         hashed = hashlib.sha256(canonical([service,operation,topic,metadata,payload]).encode()).hexdigest()
         with self.conn:
             prior = self.conn.execute("SELECT digest,revision,observed_at FROM checkpoints WHERE session=? AND name=?",(session,name)).fetchone()
@@ -89,6 +91,26 @@ class Outbox:
             chosen.append(row); size += len(row[1].encode())
         response = client.post(base_url+"/v1/ingest", headers={"Authorization":"Bearer "+token},
             json={"events":[json.loads(row[1]) for row in chosen]})
+        if response.status_code == 409:
+            # A stale/reused RPC identity must not block unrelated snapshots forever.
+            # Isolate the conflicting observation without discarding its original body.
+            completed = 0
+            for row in chosen:
+                single = json.loads(row[1])
+                reply = client.post(base_url+"/v1/ingest", headers={"Authorization":"Bearer "+token}, json={"events":[single]})
+                if reply.status_code == 409:
+                    with self.conn:
+                        self.conn.execute("INSERT OR IGNORE INTO conflicting_observations VALUES (?,?,?,?)", (row[0],row[1],"cloud_revision_conflict",utc()))
+                        self.conn.execute("DELETE FROM outbox WHERE id=?",(row[0],))
+                    completed += 1
+                    continue
+                reply.raise_for_status()
+                ack = reply.json().get("acknowledged",[])
+                if len(ack)!=1 or (ack[0].get("event_key"),ack[0].get("revision"))!=(single["event_key"],single["revision"]) or ack[0].get("state") not in {"inserted","updated","duplicate","stale"}:
+                    raise RuntimeError("Incomplete cloud acknowledgement; outbox retained")
+                with self.conn:self.conn.execute("DELETE FROM outbox WHERE id=?",(row[0],))
+                completed += 1
+            return completed
         response.raise_for_status()
         ack = response.json().get("acknowledged",[])
         expected = [(json.loads(row[1])["event_key"],json.loads(row[1])["revision"]) for row in chosen]
