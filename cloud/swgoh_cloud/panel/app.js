@@ -106,7 +106,7 @@ function tbMarkup(records,runKey,phase,all){
  if(p.truncated)html+='<p class="error">Odgovor je skraćen. Nedostajuće vrednosti nisu nule.</p>';
  const columns=all?p.columns:['territoryPoints','deployedGP','undeployedGP','waves','combatAttempts','donatedUnits','played','deployed','donated'];
  const labels={territoryPoints:'Territory points',deployedGP:'Deployed GP',undeployedGP:'Undeployed GP*',waves:'Talasi',combatAttempts:'Borbeni pokušaji',donatedUnits:'Donirane jedinice',played:'Igrao misiju',deployed:'Rasporedio GP',donated:'Donirao'};
- html+='<div class="table-wrap" style="overflow:auto"><table><thead><tr><th>Član</th>'+columns.map(c=>'<th>'+tbEsc(labels[c]||c)+'</th>').join('')+'<th>Svi podaci / misije</th></tr></thead><tbody>';
+ html+='<div class="table-wrap" data-tb-scroll style="overflow:auto"><table><thead><tr><th>Član</th>'+columns.map(c=>'<th>'+tbEsc(labels[c]||c)+'</th>').join('')+'<th>Svi podaci / misije</th></tr></thead><tbody>';
  for(const row of p.rows){html+='<tr><td><strong>'+tbEsc(row.name||'Član bez imena')+'</strong></td>'+columns.map(c=>'<td>'+tbEsc(['played','deployed','donated'].includes(c)?tbBool(row[c]):tbNum(all?row.values[c]:row[c]))+'</td>').join('');
  html+='<td><details data-tb-member="'+tbEsc(row.memberKey)+'" '+(tbOpenMembers.has(row.memberKey)?'open':'')+'><summary>Statistike i statusi ('+Object.keys(row.values).length+')</summary><p>GP u snimku: '+tbNum(row.galacticPower)+'</p><table><tr><th>Misija / zona</th><th>Server rezultat</th><th>Pokušano</th><th>Pređeno</th></tr>'+row.missions.map(m=>'<tr><td>'+tbEsc(m.zone)+'</td><td>'+tbEsc(m.result)+'</td><td>'+tbBool(m.attempted)+'</td><td>'+tbBool(m.completed)+'</td></tr>').join('')+'</table><table>'+p.columns.map(c=>'<tr><td>'+tbEsc(c)+'</td><td>'+tbNum(row.values[c])+'</td></tr>').join('')+'</table></details></td></tr>';}
  return html+'</tbody></table></div><p class="hint">— znači da podatak nije dostupan. Pređeno/Ne koristi eksplicitni rezultat specijalne misije; broj talasa ne dokazuje da je svaka borba završena. *Undeployed GP je izveden iz GP-a sačuvanog uz ovu fazu i deployed GP-a; može odstupati od zaključanog TB rostera. Završni odgovor označava istorijske podatke dobijene u sledećoj fazi ili rezultatu TB-a. Ako je kraj propušten, ostaje oznaka poslednjeg snimka.</p>';
@@ -118,3 +118,26 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-tb-phase]'
 document.addEventListener('change',e=>{if(e.target.id==='tb-run'){tbSelectedRun=e.target.value;tbSelectedPhase=0;render();}if(e.target.id==='tb-all'){tbAllColumns=e.target.checked;render();}});
 
 
+
+// Keep the TB horizontal scrollbar reachable while its table is on screen.
+(()=>{
+ const bar=document.createElement('div');bar.className='tb-bottom-scroll';bar.hidden=true;
+ bar.setAttribute('role','region');bar.setAttribute('aria-label','Horizontalno pomeranje TB tabele');bar.tabIndex=0;
+ const track=document.createElement('div');bar.append(track);document.body.append(bar);
+ let table=null,frame=0,savedLeft=0;
+ const observer=new ResizeObserver(schedule);
+ function schedule(){if(!frame)frame=requestAnimationFrame(update)}
+ function update(){
+  frame=0;const next=document.querySelector('[data-tb-scroll]');
+  if(next!==table){if(table){savedLeft=table.scrollLeft;table.removeEventListener('scroll',fromTable);observer.disconnect()}table=next;if(table){table.scrollLeft=savedLeft;table.addEventListener('scroll',fromTable,{passive:true});observer.observe(table);observer.observe(table.firstElementChild)}}
+  if(!table){bar.hidden=true;return}
+  const r=table.getBoundingClientRect(),width=Math.min(r.right,document.documentElement.clientWidth)-Math.max(0,r.left);
+  bar.hidden=!(r.top<innerHeight-28&&r.bottom>28&&width>0&&table.scrollWidth>table.clientWidth+1);
+  if(bar.hidden)return;
+  bar.style.left=Math.max(0,r.left)+'px';bar.style.width=width+'px';track.style.width=(table.scrollWidth-table.clientWidth+width)+'px';bar.scrollLeft=table.scrollLeft;
+ }
+ function fromTable(){savedLeft=table.scrollLeft;bar.scrollLeft=savedLeft}
+ bar.addEventListener('scroll',()=>{if(table&&Math.abs(table.scrollLeft-bar.scrollLeft)>1){table.scrollLeft=bar.scrollLeft;savedLeft=table.scrollLeft}},{passive:true});
+ new MutationObserver(schedule).observe(document.querySelector('main')||document.body,{childList:true,subtree:true});
+ addEventListener('scroll',schedule,{passive:true,capture:true});addEventListener('resize',schedule);schedule();
+})();
