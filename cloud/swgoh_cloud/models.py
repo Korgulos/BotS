@@ -11,9 +11,10 @@ OPERATIONS = {
     "StoreRpc": {"RefreshShipments", "BuyShipmentItem", "BuyItem"},
     "BattleRpc": {"BattleStart", "BattleFinish"},
     "ChannelRpc": {"GetEvents"},
+    "TerritoryRpc": {"GetTerritoryMapStatuses", "GetMapStats"},
     "Inspector": {"Snapshot"},
 }
-TOPICS = {"shipments", "inbox", "guild", "energy", "inventory"}
+TOPICS = {"shipments", "inbox", "guild", "energy", "inventory", "territory"}
 SECRET_KEYS = {"authorization", "cookie", "setcookie", "password", "identitytoken", "accesstoken", "refreshtoken", "sessiontoken", "requesttoken", "apikey", "inspectorKey".lower(), "headers", "rawdata", "rawbody", "requestenvelope", "serializedpayload", "claimreference"}
 
 
@@ -79,7 +80,7 @@ class Observation(StrictModel):
         if len(json.dumps(self.metadata, allow_nan=False).encode()) > 16384:
             raise ValueError("Observation metadata exceeds 16 KiB")
         for value in (self.metadata, self.payload):
-            check_tree(value)
+            check_tree(value, budget=[120000] if self.topic == "territory" else None)
         if len(json.dumps(self.model_dump(mode="json"), allow_nan=False).encode()) > 1024 * 1024:
             raise ValueError("Observation exceeds one MiB")
         return self

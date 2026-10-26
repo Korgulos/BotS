@@ -32,7 +32,10 @@ def project(conn, event_id, event):
     for table in (db.offers, db.inbox, db.members, db.battles):
         conn.execute(delete(table).where(table.c.event_id == event_id))
     topic = event.topic
-    if topic:
+    if topic == "territory":
+        from .territory import checkpoint
+        checkpoint(conn, event)
+    if topic and topic != "territory":
         query = insert(db.snapshots).values(account_id=event.account_id, source_id=event.source_id,
             topic=topic, event_id=event_id, observed_at=event.observed_at, payload=payload)
         conn.execute(query.on_conflict_do_update(index_elements=["account_id", "source_id", "topic"],

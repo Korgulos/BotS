@@ -213,6 +213,9 @@ def create_app(settings: Settings, engine=None):
             return [dict(r) for r in conn.execute(select(db.snapshots).where(
                 db.snapshots.c.account_id == who["account_id"]).order_by(db.snapshots.c.observed_at.desc()).limit(32)).mappings()]
 
+    from .territory import install as install_territory
+    install_territory(app, engine, reader)
+
     @app.get("/v1/battles")
     def list_battles(who=Depends(reader), limit: int = Query(50, ge=1, le=200)):
         query = select(db.battles, db.events.c.observed_at, db.events.c.session, db.events.c.source_id).join(

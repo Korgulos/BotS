@@ -276,3 +276,28 @@ The Inventory page supports category filtering and search. Shipments show “U i
 A stable visible reward fingerprint prevents duplicate automatic attempts when rows are renumbered. Ambiguous identical previews, special or unverified live details, expired rewards, unsupported types, and any prior matching attempt are skipped. Unknown sends block retries; disabling cancels only unsent automatic commands and is rechecked at commit reservation.
 
 Inspector 0.28.0 reads current messages from the existing Inbox controller without sending refresh RPCs. It preserves opaque local handles, checks known detail types and action flags, and leaves unverified live details blocked. Successful Claim dialogs now show the receipt and close after 1.4 seconds, just like purchases. Automatic Claims do not open a confirmation popup; their outcomes appear in inbox history.
+
+### Territory Battle phase history
+
+Inspector 0.30.0 exports `/api/territory`: a bounded, passive projection of the guild roster,
+map status and already-decoded GetMapStats. Map instance and member IDs are represented
+only by stable, opaque hashes. GetMapStats is associated only when its typed request map
+matches an observed TB instance; unrelated maps are ignored.
+
+The bridge uploads these observations with topic `territory`. The existing SQL event store
+keeps the raw snapshot and one checkpoint per source, TB instance and phase (1–6), with no
+schema migration. `/v1/territory/phases` requires a read/control credential and is account
+isolated. Live checkpoints update in place; a later-phase response containing explicit
+historical round statistics or a final TB result confirms a final checkpoint. Merely
+advancing the map closes the last-seen checkpoint without claiming it is a final result.
+Old observations cannot downgrade a final checkpoint. Earlier phase roster/GP data is
+retained when later historical results finalize that phase.
+
+The guild panel joins all roster members to the available round and zone statistics.
+Missing rows stay unknown instead of zero. Covert mission states preserve UNATTEMPTED,
+ATTEMPTEDFAILED and ATTEMPTEDSUCCEEDED with attempted/completed flags. Combat wave counts
+do not imply completion of a whole mission. Undeployed GP is a derived comparison to the
+captured guild roster, which may differ from a TB-locked eligible roster. No final phase
+results can be collected while both the game and bridge are unavailable; the panel marks
+such gaps instead of fabricating results. Phase changes follow server rounds, not local
+midnight or an assumed 24-hour schedule.
