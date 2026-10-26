@@ -99,6 +99,7 @@ function tbBool(x){return x===true?'Da':x===false?'Ne':'—'}
 function tbMarkup(records,runKey,phase,all){
  const runs=[...new Map(records.map(r=>[r.payload.battleKey,{key:r.payload.battleKey,definition:r.payload.definition,label:tbRunLabel(r.payload)}])).values()];
  if(!runs.length)return '<p class="hint">Još nema TB snimka. Otvori gild i TB statistike u igri.</p>';
+ runs.sort((a,b)=>{const rank=k=>records.some(r=>r.payload.battleKey===k&&r.payload.state==='live')?1:0;const start=k=>Math.max(0,...records.filter(r=>r.payload.battleKey===k).map(r=>Number(r.payload.battleStart)||Number(r.payload.phaseEnd)-r.payload.phase*86400000||0));return rank(b.key)-rank(a.key)||start(b.key)-start(a.key)});
  const key=runs.some(r=>r.key===runKey)?runKey:runs[0].key;
  const selected=records.filter(r=>r.payload.battleKey===key);const active=phase||Math.max(...selected.map(r=>r.payload.phase));
  const p=selected.find(r=>r.payload.phase===active)?.payload;const phases=Array.from({length:6},(_,i)=>i+1);
