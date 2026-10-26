@@ -301,3 +301,28 @@ captured guild roster, which may differ from a TB-locked eligible roster. No fin
 results can be collected while both the game and bridge are unavailable; the panel marks
 such gaps instead of fabricating results. Phase changes follow server rounds, not local
 midnight or an assumed 24-hour schedule.
+
+### Direct Territory Battle reads
+
+The control-only `POST /v1/territory/collect` reads the authenticated account's
+GetInitialData, GuildRpc.GetGuild, TerritoryRpc.GetTerritoryMapStatuses and
+TerritoryRpc.GetMapStats (explicit TB event type 9). It joins the complete guild
+roster and writes the existing six-phase checkpoints. No battle, purchase,
+claim, authentication renewal or raw credential export is performed.
+
+The **Učitaj TB sa servera** button is available in **Gild i borbe** with a control
+key. The game must be offline; overlapping collections and immediate repeats
+within 60 seconds are skipped. Read keys can inspect
+`GET /v1/territory/collection` but cannot trigger collection.
+
+`SWGOH_TERRITORY_SESSION` is a private JSON environment secret bound to an
+account and source, with an explicit expiration capped at 24 hours from capture.
+Rejected sessions disable the schedule; expired sessions require fresh capture.
+Do not commit this value. Schema tags in `territory_schema.json` were exported
+from the game's RuntimeTypeModel using inspector 0.31.0.
+
+Hourly collection code is prepared in `python -m swgoh_cloud.territory_job`,
+but **no hourly infrastructure is enabled**. The user selected manual collection
+and declined creating the paid Render cron service. A future cron service must
+be explicitly provisioned and receive its own approved configuration; the free
+API process is not used as a reliable in-process timer.

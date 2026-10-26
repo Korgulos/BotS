@@ -1,0 +1,684 @@
+{
+  "Guild": {
+    "profile": {
+      "tag": 1,
+      "type": "GuildProfile"
+    },
+    "member": {
+      "tag": 2,
+      "type": "GuildMember"
+    },
+    "invite_status": {
+      "tag": 3,
+      "type": "GuildInviteStatus"
+    },
+    "raid_status": {
+      "tag": 4,
+      "type": "GuildRaidStatus"
+    },
+    "inventory": {
+      "tag": 5,
+      "type": "GuildInventory"
+    },
+    "raid_result": {
+      "tag": 6,
+      "type": "GuildRaidResult"
+    },
+    "progress": {
+      "tag": 7,
+      "type": "GuildProgress"
+    },
+    "territory_battle_status": {
+      "tag": 8,
+      "type": "TerritoryBattleStatus"
+    },
+    "guild_events": {
+      "tag": 9,
+      "type": "GameEvent"
+    },
+    "territory_battle_result": {
+      "tag": 10,
+      "type": "TerritoryBattleResult"
+    },
+    "territory_war_status": {
+      "tag": 11,
+      "type": "TerritoryWarStatus"
+    },
+    "room_available": {
+      "tag": 12,
+      "type": "RoomData"
+    },
+    "next_challenges_refresh": {
+      "tag": 13,
+      "type": "int64"
+    },
+    "stat": {
+      "tag": 15,
+      "type": "GuildStat"
+    },
+    "recent_raid_result": {
+      "tag": 16,
+      "type": "GuildRaidResult"
+    },
+    "recent_territory_war_result": {
+      "tag": 17,
+      "type": "TerritoryWarResult"
+    },
+    "last_raid_points_summary": {
+      "tag": 18,
+      "type": "GuildRaidPointsSummary"
+    },
+    "recent_territory_battle_result": {
+      "tag": 19,
+      "type": "TerritoryBattleResult"
+    }
+  },
+  "GuildMember": {
+    "player_id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "player_name": {
+      "tag": 2,
+      "type": "string"
+    },
+    "player_level": {
+      "tag": 3,
+      "type": "int32"
+    },
+    "member_level": {
+      "tag": 4,
+      "type": "GuildMemberLevel"
+    },
+    "guild_xp": {
+      "tag": 7,
+      "type": "int32"
+    },
+    "last_activity_time": {
+      "tag": 8,
+      "type": "int64"
+    },
+    "squad_power": {
+      "tag": 9,
+      "type": "int32"
+    },
+    "member_contribution": {
+      "tag": 11,
+      "type": "GuildMemberContribution"
+    },
+    "guild_join_time": {
+      "tag": 12,
+      "type": "int64"
+    },
+    "galactic_power": {
+      "tag": 13,
+      "type": "int64"
+    },
+    "player_title": {
+      "tag": 14,
+      "type": "string"
+    },
+    "player_portrait": {
+      "tag": 15,
+      "type": "string"
+    },
+    "season_status": {
+      "tag": 16,
+      "type": "SeasonStatus"
+    },
+    "lifetime_season_score": {
+      "tag": 17,
+      "type": "int64"
+    },
+    "league_id": {
+      "tag": 18,
+      "type": "string"
+    },
+    "ship_galactic_power": {
+      "tag": 19,
+      "type": "int64"
+    },
+    "character_galactic_power": {
+      "tag": 20,
+      "type": "int64"
+    },
+    "nucleus_id": {
+      "tag": 21,
+      "type": "string"
+    }
+  },
+  "GuildProfile": {
+    "id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "name": {
+      "tag": 2,
+      "type": "string"
+    },
+    "external_message_key": {
+      "tag": 3,
+      "type": "string"
+    },
+    "message_criteria_key": {
+      "tag": 4,
+      "type": "string"
+    },
+    "logo_background": {
+      "tag": 6,
+      "type": "string"
+    },
+    "enrollment_status": {
+      "tag": 7,
+      "type": "EnrollmentStatus"
+    },
+    "trophy": {
+      "tag": 8,
+      "type": "int32"
+    },
+    "member_count": {
+      "tag": 9,
+      "type": "int32"
+    },
+    "member_max": {
+      "tag": 10,
+      "type": "int32"
+    },
+    "level": {
+      "tag": 11,
+      "type": "int32"
+    },
+    "rank": {
+      "tag": 12,
+      "type": "int32"
+    },
+    "level_requirement": {
+      "tag": 13,
+      "type": "int32"
+    },
+    "raid_win": {
+      "tag": 14,
+      "type": "int32"
+    },
+    "leaderboard_score": {
+      "tag": 15,
+      "type": "int64"
+    },
+    "banner_color_id": {
+      "tag": 16,
+      "type": "string"
+    },
+    "banner_logo_id": {
+      "tag": 17,
+      "type": "string"
+    },
+    "guild_galactic_power": {
+      "tag": 19,
+      "type": "int64"
+    },
+    "chat_channel_id": {
+      "tag": 20,
+      "type": "string"
+    },
+    "guild_type": {
+      "tag": 21,
+      "type": "string"
+    },
+    "raid_launch_config": {
+      "tag": 22,
+      "type": "GuildRaidLaunchConfig"
+    },
+    "guild_event_tracker": {
+      "tag": 24,
+      "type": "GuildEventTracker"
+    },
+    "guild_galactic_power_for_requirement": {
+      "tag": 25,
+      "type": "int64"
+    },
+    "single_launch_config": {
+      "tag": 26,
+      "type": "GuildRaidLaunchConfig"
+    },
+    "auto_launch_config": {
+      "tag": 27,
+      "type": "GuildRaidLaunchConfig"
+    }
+  },
+  "InitialDataResponse": {
+    "id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "player": {
+      "tag": 2,
+      "type": "Player"
+    },
+    "swrve_ab_variants": {
+      "tag": 3,
+      "type": "string"
+    },
+    "config_override": {
+      "tag": 4,
+      "type": "ConfigEntry"
+    },
+    "inventory": {
+      "tag": 5,
+      "type": "Inventory"
+    },
+    "game_event": {
+      "tag": 13,
+      "type": "GameEvent"
+    },
+    "interstitial_message": {
+      "tag": 15,
+      "type": "InterstitialMessage"
+    },
+    "inbox": {
+      "tag": 16,
+      "type": "Inbox"
+    },
+    "active_message": {
+      "tag": 17,
+      "type": "ContextualMessageGroup"
+    },
+    "store": {
+      "tag": 18,
+      "type": "Store"
+    },
+    "purchase_stats": {
+      "tag": 19,
+      "type": "PurchasedInfo"
+    },
+    "daily_login": {
+      "tag": 20,
+      "type": "DailyLogin"
+    },
+    "challenge_progress": {
+      "tag": 21,
+      "type": "ChallengeProgress"
+    },
+    "challenge_reset_time": {
+      "tag": 22,
+      "type": "int64"
+    },
+    "onboarding_character_squad": {
+      "tag": 25,
+      "type": "Squad"
+    },
+    "onboarding_ship_squad": {
+      "tag": 26,
+      "type": "Squad"
+    },
+    "ally_list": {
+      "tag": 27,
+      "type": "AllyList"
+    },
+    "cooldown_status": {
+      "tag": 31,
+      "type": "CooldownStatus"
+    },
+    "daily_action_cap_status": {
+      "tag": 33,
+      "type": "DailyActionCapStatus"
+    },
+    "onboarding_social_pack_unit_id": {
+      "tag": 34,
+      "type": "string"
+    },
+    "war": {
+      "tag": 35,
+      "type": "War"
+    },
+    "subscription_status": {
+      "tag": 36,
+      "type": "SubscriptionStatus"
+    },
+    "guild": {
+      "tag": 40,
+      "type": "Guild"
+    },
+    "invite_status": {
+      "tag": 41,
+      "type": "GuildInviteStatus"
+    },
+    "pvp_daily_rank_reward_preview": {
+      "tag": 44,
+      "type": "RankRewardPreview"
+    },
+    "using_tutorial_arena_opponents": {
+      "tag": 47,
+      "type": "bool"
+    },
+    "ship_pvp_daily_rank_reward_preview": {
+      "tag": 48,
+      "type": "RankRewardPreview"
+    },
+    "player_preference": {
+      "tag": 49,
+      "type": "PlayerPreference"
+    },
+    "territory_battle_status": {
+      "tag": 50,
+      "type": "TerritoryBattleStatus"
+    },
+    "identity_token": {
+      "tag": 51,
+      "type": "string"
+    },
+    "territory_war_status": {
+      "tag": 52,
+      "type": "TerritoryWarStatus"
+    },
+    "selected_player_title": {
+      "tag": 53,
+      "type": "PlayerTitle"
+    },
+    "unlocked_player_title": {
+      "tag": 54,
+      "type": "PlayerTitle"
+    },
+    "chat_disabled": {
+      "tag": 55,
+      "type": "bool"
+    },
+    "territory_tournament_status": {
+      "tag": 56,
+      "type": "TerritoryTournamentEventStatus"
+    },
+    "season_status": {
+      "tag": 57,
+      "type": "SeasonStatus"
+    },
+    "selected_player_portrait": {
+      "tag": 58,
+      "type": "PlayerPortrait"
+    },
+    "unlocked_player_portrait": {
+      "tag": 59,
+      "type": "PlayerPortrait"
+    },
+    "time_zone_change_status": {
+      "tag": 60,
+      "type": "TimeZoneChangeStatus"
+    },
+    "ea_account_connect_incentive": {
+      "tag": 61,
+      "type": "BucketItem"
+    },
+    "campaign_status": {
+      "tag": 62,
+      "type": "CampaignStatusUpdateMessage"
+    },
+    "highest_lifetime_season_league_rank": {
+      "tag": 63,
+      "type": "int32"
+    },
+    "scavenger_locked_item_id": {
+      "tag": 64,
+      "type": "string"
+    },
+    "completed_event": {
+      "tag": 66,
+      "type": "string"
+    },
+    "galactic_power_highwatermark": {
+      "tag": 67,
+      "type": "int32"
+    },
+    "skipped_tutorial": {
+      "tag": 68,
+      "type": "bool"
+    },
+    "reprompt_eula": {
+      "tag": 70,
+      "type": "bool"
+    },
+    "conquest_status": {
+      "tag": 71,
+      "type": "ConquestStatus"
+    },
+    "player_rating": {
+      "tag": 75,
+      "type": "PlayerRating"
+    },
+    "territory_defense": {
+      "tag": 76,
+      "type": "TerritoryDefense"
+    },
+    "datacron": {
+      "tag": 77,
+      "type": "Datacron"
+    },
+    "pending_mod_reroll": {
+      "tag": 78,
+      "type": "StatMod"
+    },
+    "reprompt_age_up_eula": {
+      "tag": 79,
+      "type": "bool"
+    },
+    "gift_recipient_counts": {
+      "tag": 80,
+      "type": "GiftRecipientCount"
+    },
+    "unresolved_recipient_choice": {
+      "tag": 81,
+      "type": "StoreTransactionRecipientChoiceOption"
+    },
+    "um_attribute": {
+      "tag": 82,
+      "type": "string"
+    },
+    "episode_status": {
+      "tag": 83,
+      "type": "EpisodeStatus"
+    },
+    "era_status": {
+      "tag": 84,
+      "type": "EraStatus"
+    },
+    "coliseum_participated_yesterday": {
+      "tag": 85,
+      "type": "bool"
+    },
+    "coliseum_participated_today": {
+      "tag": 86,
+      "type": "bool"
+    },
+    "overview_data": {
+      "tag": 87,
+      "type": "OverviewData"
+    },
+    "contribution_minutes_from_midnight_offset": {
+      "tag": 88,
+      "type": "int32"
+    }
+  },
+  "TerritoryBattleResult": {
+    "instance_id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "definition_id": {
+      "tag": 2,
+      "type": "string"
+    },
+    "end_time": {
+      "tag": 3,
+      "type": "int64"
+    },
+    "total_stars": {
+      "tag": 4,
+      "type": "int64"
+    },
+    "final_stat": {
+      "tag": 5,
+      "type": "TerritoryMapStat"
+    },
+    "start_time": {
+      "tag": 6,
+      "type": "int64"
+    }
+  },
+  "TerritoryBattleStatus": {
+    "instance_id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "definition_id": {
+      "tag": 2,
+      "type": "string"
+    },
+    "conflict_zone_status": {
+      "tag": 5,
+      "type": "TerritoryConflictZoneStatus"
+    },
+    "strike_zone_status": {
+      "tag": 6,
+      "type": "TerritoryStrikeZoneStatus"
+    },
+    "recon_zone_status": {
+      "tag": 7,
+      "type": "TerritoryReconZoneStatus"
+    },
+    "player_status": {
+      "tag": 8,
+      "type": "TerritoryBattlePlayerStatus"
+    },
+    "current_round": {
+      "tag": 9,
+      "type": "int32"
+    },
+    "current_round_end_time": {
+      "tag": 11,
+      "type": "int64"
+    },
+    "channel_id": {
+      "tag": 12,
+      "type": "string"
+    },
+    "covert_zone_status": {
+      "tag": 13,
+      "type": "TerritoryCovertZoneStatus"
+    },
+    "current_stat": {
+      "tag": 14,
+      "type": "TerritoryMapStat"
+    },
+    "last_command_notification_time": {
+      "tag": 15,
+      "type": "int64"
+    },
+    "map_completed_early": {
+      "tag": 16,
+      "type": "bool"
+    },
+    "selected": {
+      "tag": 17,
+      "type": "bool"
+    }
+  },
+  "TerritoryMapStat": {
+    "map_stat_id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "player_stat": {
+      "tag": 2,
+      "type": "TerritoryPlayerStat"
+    }
+  },
+  "TerritoryPlayerStat": {
+    "member_id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "score": {
+      "tag": 2,
+      "type": "int64"
+    },
+    "covert_zone_result": {
+      "tag": 3,
+      "type": "TerritoryStatCovertZoneResult"
+    }
+  },
+  "TerritoryStatCovertZoneResult": {
+    "covert_zone_id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "result": {
+      "tag": 2,
+      "type": "TerritoryCovertMissionResult"
+    }
+  },
+  "GetGuildRequest": {
+    "guild_id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "include_recent_guild_activity_info": {
+      "tag": 2,
+      "type": "bool"
+    }
+  },
+  "GetGuildResponse": {
+    "guild": {
+      "tag": 1,
+      "type": "Guild"
+    }
+  },
+  "GetTerritoryMapStatusesRequest": {
+    "event_type": {
+      "tag": 1,
+      "type": "GameEventType"
+    },
+    "cached_unit_snapshot_map_id": {
+      "tag": 2,
+      "type": "string"
+    }
+  },
+  "GetTerritoryMapStatusesResponse": {
+    "territory_battle_status": {
+      "tag": 1,
+      "type": "TerritoryBattleStatus"
+    },
+    "territory_battle_result": {
+      "tag": 2,
+      "type": "TerritoryBattleResult"
+    },
+    "territory_war_status": {
+      "tag": 3,
+      "type": "TerritoryWarStatus"
+    },
+    "territory_tournament_event_status": {
+      "tag": 4,
+      "type": "TerritoryTournamentEventStatus"
+    }
+  },
+  "GetMapStatsRequest": {
+    "territory_map_id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "map_stat_id": {
+      "tag": 2,
+      "type": "string"
+    },
+    "event_type": {
+      "tag": 3,
+      "type": "GameEventType"
+    }
+  },
+  "GetMapStatsResponse": {
+    "current_stat": {
+      "tag": 1,
+      "type": "TerritoryMapStat"
+    },
+    "context": {
+      "tag": 2,
+      "type": "TerritoryMapStatContext"
+    }
+  }
+}

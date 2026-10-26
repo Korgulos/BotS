@@ -120,7 +120,7 @@ def checkpoint(conn, event):
                 # A map/roster snapshot alone cannot invent final contribution numbers.
                 if phase < current: projected['rows'] = []
             projected.update(battleKey=run_key, definition=run.get('definition'), phase=phase, state=state,
-                             observedAt=captured.isoformat(), phaseEnd=run.get('roundEnd') if phase == current else (old['payload'].get('phaseEnd') if old else None))
+                             observedAt=captured.isoformat(), battleStart=run.get('battleStart') or (old['payload'].get('battleStart') if old else None), phaseEnd=run.get('roundEnd') if phase == current else (old['payload'].get('phaseEnd') if old else None))
             raw = json.dumps(projected, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
             digest = db.digest(raw)
             if old and old['content_hash'] == digest: continue
