@@ -268,3 +268,11 @@ Inventory snapshots contain only definition-level currencies, materials, equipme
 Direct shipment preflight and a best-effort post-purchase read save fresh inventory; failure after a confirmed purchase marks the inventory stale without changing the purchase result or repeating it. Inspector 0.26.0 captures Inventory from GetInitialData through `/api/inventory`, and the bridge preserves original capture time so an old game snapshot cannot replace a newer direct snapshot. Game-observed resource-changing operations mark the cached inventory as needing refresh.
 
 The Inventory page supports category filtering and search. Shipments show “U inventaru” by exact resource type + definition, with mod/unit canonicalization. Missing rows mean zero only in a complete captured category; unknown categories or missing source snapshots display a dash.
+
+### Opt-in automatic inbox rewards
+
+`POST /v1/inbox/automation` (control key, enabled boolean) persists an account/source-bound policy in the existing event store; GET reads it. The bridge tick requests `/v1/bridge/inbox/auto-prepare` only while online with actions enabled. The default is off. Enabled mode validates the same exact type/subject whitelist and fixed supported attachments as manual Claim, obtains and rechecks the native quote, and authorizes the existing single-send journal path without another UI confirmation. Purchases remain manual.
+
+A stable visible reward fingerprint prevents duplicate automatic attempts when rows are renumbered. Ambiguous identical previews, special or unverified live details, expired rewards, unsupported types, and any prior matching attempt are skipped. Unknown sends block retries; disabling cancels only unsent automatic commands and is rechecked at commit reservation.
+
+Inspector 0.28.0 reads current messages from the existing Inbox controller without sending refresh RPCs. It preserves opaque local handles, checks known detail types and action flags, and leaves unverified live details blocked. Successful Claim dialogs now show the receipt and close after 1.4 seconds, just like purchases. Automatic Claims do not open a confirmation popup; their outcomes appear in inbox history.

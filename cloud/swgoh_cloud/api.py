@@ -255,4 +255,6 @@ def create_app(settings: Settings, engine=None):
     install_direct_purchases(app,engine,controller)
     from .inventory import install as install_inventory
     install_inventory(app,engine,reader,controller)
+    from .inbox_automation import install as install_inbox_automation
+    install_inbox_automation(app,engine,reader,controller,writer)
     return app

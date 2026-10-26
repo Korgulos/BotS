@@ -90,7 +90,9 @@ def install(app, engine, reader, controller, writer):
             statuses=[dict(r) for r in c.execute(select(db.agents).join(db.sources,db.sources.c.id==db.agents.c.source_id).where(db.sources.c.account_id==who['account_id'])).mappings()]
             from .direct_purchases import status
             direct=status(c,who)
-        return {'can_purchase':who['role']=='control','commands':rows,'bridges':statuses,'direct':direct}
+            from .inbox_automation import settings
+            inbox_auto=settings(c,who['account_id'])
+        return {'can_purchase':who['role']=='control','commands':rows,'bridges':statuses,'direct':direct,'inbox_auto':inbox_auto}
 
     @router.post('/v1/purchases/prepare')
     def prepare(data:Prepare,who=Depends(controller)):
@@ -179,6 +181,9 @@ def install(app, engine, reader, controller, writer):
             if row['expected'].get('transport')=='direct':raise HTTPException(409,'Direktnu kupovinu ne preuzima bridge')
             if row['session']!=data.session:raise HTTPException(409,'Igra je ponovo pokrenuta; zahtev se ne šalje')
             live(c,who['source_id'],data.session)
+            if data.phase=='commit' and row['expected'].get('automatic') is True:
+                from .inbox_automation import settings
+                if not settings(c,who['account_id'],who['source_id'])['enabled']:raise HTTPException(409,'Automatski Claim je isključen')
             states={'prepare':('queued_prepare','preparing'),'commit':('queued_commit','sending')};before,after=states[data.phase]
             if row['state']==after:return row
             if row['state']!=before or row['expires_at']<=db.now():raise HTTPException(409,'Zahtev nije spreman ili je istekao')
@@ -200,6 +205,10 @@ def install(app, engine, reader, controller, writer):
                 expires=min(data.expires_at,db.now()+timedelta(seconds=30),row['expires_at'])
                 if expires<=db.now():return change(c,row,state='expired',code='APPROVAL_EXPIRED')
                 if row['state']=='prepared':return row
+                if row['expected'].get('automatic') is True:
+                    from .inbox_automation import settings
+                    if row['expected'].get('kind')!='inbox' or not settings(c,who['account_id'],who['source_id'])['enabled']:return change(c,row,state='cancelled',code='AUTOMATION_DISABLED')
+                    return change(c,row,state='queued_commit',quote=q,quote_hash=fingerprint(q),expires_at=expires,code='AUTO_INBOX_VALIDATED',confirmed_at=db.now())
                 return change(c,row,state='prepared',quote=q,quote_hash=fingerprint(q),expires_at=expires,code='READY')
             if data.state in {'succeeded','uncertain'} and row['state'] not in {'sending','uncertain'}:raise HTTPException(409,'Kupovina nije potvrđena za slanje')
             return change(c,row,state=data.state,code=data.code or data.state.upper())

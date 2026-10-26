@@ -24,6 +24,9 @@ class PurchaseWorker:
             r=client.post(cloud+path,headers=headers,json=data);r.raise_for_status();return r.json()
         cloud_post('/v1/bridge/heartbeat',dict(session=session,online=online,purchases_enabled=enabled))
         if not online or not enabled:return
+        try:cloud_post('/v1/bridge/inbox/auto-prepare',{'session':session})
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code!=404:raise
         response=client.get(cloud+'/v1/bridge/purchases',headers=headers);response.raise_for_status();command=response.json()
         if not command:return
         identifier=command['id'];phase=command['state'];local=self.load(identifier)
