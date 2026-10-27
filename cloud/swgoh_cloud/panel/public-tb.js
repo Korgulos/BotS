@@ -2,7 +2,7 @@
 const tbOpenMembers=new Set();
 let tbDeployAscending=false;
 function tbRunLabel(p){const name=p.definition==='t05D'?'Rise of the Empire':p.definition;let start=p.battleStart,estimated=false;if(!start&&p.phaseEnd&&p.phase){start=Number(p.phaseEnd)-Number(p.phase)*86400000;estimated=true}const date=start?new Date(Number(start)):null;return name+' · početak: '+(date&&!Number.isNaN(date.getTime())?date.toLocaleDateString('sr-Latn')+(estimated?' (procena)':''):'nije zabeležen')+' · '+p.battleKey.slice(0,8)}
-function tbSortedRows(rows){return [...rows].sort((a,b)=>{const av=a.deployedGP,bv=b.deployedGP;if(av==null)return bv==null?0:1;if(bv==null)return -1;const x=BigInt(av),y=BigInt(bv);return (x<y?-1:x>y?1:0)*(tbDeployAscending?1:-1)})}
+function tbSortedRows(rows){return [...rows].sort((a,b)=>{const av=a.deployedGP,bv=b.deployedGP;if(av==null)return bv==null?0:(tbDeployAscending?-1:1);if(bv==null)return tbDeployAscending?1:-1;const x=BigInt(av),y=BigInt(bv);return (x<y?-1:x>y?1:0)*(tbDeployAscending?1:-1)})}
 function tbEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function tbNum(x){try{return x===null||x===undefined?'—':new Intl.NumberFormat('sr-Latn').format(BigInt(x))}catch{return '—'}}
 function tbBool(x){return x===true?'Da':x===false?'Ne':'—'}
