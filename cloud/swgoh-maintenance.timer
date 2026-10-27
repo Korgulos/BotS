@@ -1,0 +1,13 @@
+[Unit]
+Description=Run SWGoH Render maintenance at startup and every hour
+
+[Timer]
+OnBootSec=2min
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=20s
+AccuracySec=10s
+Unit=swgoh-maintenance.service
+
+[Install]
+WantedBy=timers.target

@@ -256,6 +256,8 @@ def create_app(settings: Settings, engine=None):
     install_direct_account(app,engine,controller)
     from .territory_job import install as install_territory_job
     install_territory_job(app,engine,reader,controller)
+    from .maintenance import install as install_maintenance
+    install_maintenance(app,engine,reader,controller)
     from .direct_purchases import install as install_direct_purchases
     install_direct_purchases(app,engine,controller)
     from .inventory import install as install_inventory

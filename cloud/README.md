@@ -326,3 +326,35 @@ but **no hourly infrastructure is enabled**. The user selected manual collection
 and declined creating the paid Render cron service. A future cron service must
 be explicitly provisioned and receive its own approved configuration; the free
 API process is not used as a reliable in-process timer.
+
+### Local hourly maintenance timer
+
+`swgoh-maintenance.timer` runs at boot (after about two minutes) and hourly via
+`swgoh-maintenance.service`. `Persistent=true` catches a missed calendar tick;
+user lingering lets the user manager start at boot, before graphical login.
+No paid Render cron service is created.
+
+The timer calls `POST /v1/maintenance/run` using the existing private local
+control configuration. The server reads TB statistics and inventory, ACCEPTs
+only the already allowlisted fixed-reward inbox messages, and calls the verified
+empty `PlayerRpc.ClaimAllEnergyRewards` request for free quest energy. It never
+sends Dismiss, purchases, currency spending or authentication renewal.
+The game must be offline. The session secret has the existing 24-hour cap.
+The local tick uses one stable request ID per account/UTC hour; the server keeps
+per-message and per-energy-hour mutation receipts. A send with an unknown outcome
+is not repeated. Fresh readback updates inbox/inventory and may reconcile absent
+message IDs or changed bonus-energy timestamps.
+
+Inspect/stop/restart the user timer:
+
+```bash
+systemctl --user status swgoh-maintenance.timer
+journalctl --user -u swgoh-maintenance.service -n 30
+systemctl --user disable --now swgoh-maintenance.timer
+systemctl --user start swgoh-maintenance.service
+```
+
+`GET /v1/maintenance/status` is account-scoped and read-key accessible.
+Credentials and raw inbox IDs are not written to receipts, panel responses or
+service logs. The protected local `.state/maintenance-last.local.json` records
+the last result, while the system journal records each timer execution.

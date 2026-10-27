@@ -1,0 +1,13 @@
+[Unit]
+Description=SWGoH hourly Render refresh and free reward collection
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/korgulos/Documents/Python/BotS
+Environment=PYTHONPATH=/home/korgulos/Documents/Python/BotS/cloud
+ExecStart=/home/korgulos/Documents/Python/BotS/work/cloud-pg-venv/bin/python -m swgoh_cloud.local_maintenance --config /home/korgulos/Documents/Python/BotS/cloud/.state/controller.local.json
+TimeoutStartSec=300
+UMask=0077
+NoNewPrivileges=yes

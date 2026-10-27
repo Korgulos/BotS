@@ -1,0 +1,771 @@
+{
+  "BucketItem": {
+    "id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "type": {
+      "tag": 2,
+      "type": "ItemType"
+    },
+    "minQuantity": {
+      "tag": 4,
+      "type": "int32"
+    },
+    "maxQuantity": {
+      "tag": 5,
+      "type": "int32"
+    },
+    "rarity": {
+      "tag": 6,
+      "type": "Rarity"
+    },
+    "stat_mod": {
+      "tag": 7,
+      "type": "StatMod"
+    },
+    "previewPriority": {
+      "tag": 8,
+      "type": "int32"
+    },
+    "unit_level": {
+      "tag": 9,
+      "type": "int32"
+    },
+    "unit_tier": {
+      "tag": 10,
+      "type": "UnitTier"
+    },
+    "primary_reward": {
+      "tag": 11,
+      "type": "bool"
+    }
+  },
+  "Energy": {
+    "type": {
+      "tag": 1,
+      "type": "EnergyType"
+    },
+    "timestamp": {
+      "tag": 2,
+      "type": "int64"
+    },
+    "max_energy": {
+      "tag": 3,
+      "type": "int32"
+    },
+    "regen_rate": {
+      "tag": 4,
+      "type": "int32"
+    },
+    "regen_cost": {
+      "tag": 5,
+      "type": "int32"
+    },
+    "overflow": {
+      "tag": 6,
+      "type": "int32"
+    }
+  },
+  "EnergyBonusTime": {
+    "energy_type": {
+      "tag": 1,
+      "type": "EnergyType"
+    },
+    "last_bonus_energy_time": {
+      "tag": 2,
+      "type": "int64"
+    }
+  },
+  "Inbox": {
+    "message": {
+      "tag": 1,
+      "type": "InboxMessage"
+    }
+  },
+  "InboxMessage": {
+    "id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "subject_key": {
+      "tag": 2,
+      "type": "string"
+    },
+    "subject_value": {
+      "tag": 3,
+      "type": "string"
+    },
+    "message_key": {
+      "tag": 4,
+      "type": "string"
+    },
+    "message_value": {
+      "tag": 5,
+      "type": "string"
+    },
+    "expire_time": {
+      "tag": 6,
+      "type": "int64"
+    },
+    "attachment": {
+      "tag": 7,
+      "type": "BucketItem"
+    },
+    "type": {
+      "tag": 8,
+      "type": "InboxMessageType"
+    },
+    "source_key": {
+      "tag": 9,
+      "type": "string"
+    },
+    "source_value": {
+      "tag": 10,
+      "type": "string"
+    },
+    "start_time": {
+      "tag": 11,
+      "type": "int64"
+    },
+    "ally": {
+      "tag": 12,
+      "type": "InboxAlly"
+    },
+    "store_receipt": {
+      "tag": 14,
+      "type": "InboxStoreReceipt"
+    },
+    "from_support": {
+      "tag": 15,
+      "type": "bool"
+    },
+    "rank": {
+      "tag": 16,
+      "type": "int32"
+    },
+    "guild": {
+      "tag": 17,
+      "type": "InboxGuild"
+    },
+    "action_link": {
+      "tag": 18,
+      "type": "ActionLink"
+    },
+    "score": {
+      "tag": 19,
+      "type": "int64"
+    },
+    "stat_mod": {
+      "tag": 20,
+      "type": "StatMod"
+    },
+    "player_value_entry": {
+      "tag": 21,
+      "type": "InboxPlayerValueEntry"
+    },
+    "opponent_score": {
+      "tag": 22,
+      "type": "int32"
+    },
+    "deletable_on_action_link": {
+      "tag": 23,
+      "type": "bool"
+    },
+    "chat_name": {
+      "tag": 24,
+      "type": "string"
+    },
+    "custom_button_key": {
+      "tag": 25,
+      "type": "string"
+    },
+    "custom_button_link": {
+      "tag": 26,
+      "type": "ActionLink"
+    },
+    "opponent_name": {
+      "tag": 27,
+      "type": "string"
+    },
+    "subject_param": {
+      "tag": 28,
+      "type": "LocalizationParam"
+    },
+    "message_param": {
+      "tag": 29,
+      "type": "LocalizationParam"
+    },
+    "season_points": {
+      "tag": 30,
+      "type": "int32"
+    },
+    "player_rating": {
+      "tag": 31,
+      "type": "PlayerRating"
+    },
+    "player_promotion_relegation_status": {
+      "tag": 32,
+      "type": "PromotionRelegationStatus"
+    },
+    "previous_rank_status": {
+      "tag": 33,
+      "type": "PlayerRankStatus"
+    },
+    "season_id": {
+      "tag": 34,
+      "type": "string"
+    },
+    "claimable_entitlement": {
+      "tag": 35,
+      "type": "InboxMessageEntitlement"
+    },
+    "store_coupon": {
+      "tag": 36,
+      "type": "InboxMessageStoreCoupon"
+    },
+    "era_summary": {
+      "tag": 37,
+      "type": "EraSummary"
+    }
+  },
+  "InitialDataResponse": {
+    "id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "player": {
+      "tag": 2,
+      "type": "Player"
+    },
+    "swrve_ab_variants": {
+      "tag": 3,
+      "type": "string"
+    },
+    "config_override": {
+      "tag": 4,
+      "type": "ConfigEntry"
+    },
+    "inventory": {
+      "tag": 5,
+      "type": "Inventory"
+    },
+    "game_event": {
+      "tag": 13,
+      "type": "GameEvent"
+    },
+    "interstitial_message": {
+      "tag": 15,
+      "type": "InterstitialMessage"
+    },
+    "inbox": {
+      "tag": 16,
+      "type": "Inbox"
+    },
+    "active_message": {
+      "tag": 17,
+      "type": "ContextualMessageGroup"
+    },
+    "store": {
+      "tag": 18,
+      "type": "Store"
+    },
+    "purchase_stats": {
+      "tag": 19,
+      "type": "PurchasedInfo"
+    },
+    "daily_login": {
+      "tag": 20,
+      "type": "DailyLogin"
+    },
+    "challenge_progress": {
+      "tag": 21,
+      "type": "ChallengeProgress"
+    },
+    "challenge_reset_time": {
+      "tag": 22,
+      "type": "int64"
+    },
+    "onboarding_character_squad": {
+      "tag": 25,
+      "type": "Squad"
+    },
+    "onboarding_ship_squad": {
+      "tag": 26,
+      "type": "Squad"
+    },
+    "ally_list": {
+      "tag": 27,
+      "type": "AllyList"
+    },
+    "cooldown_status": {
+      "tag": 31,
+      "type": "CooldownStatus"
+    },
+    "daily_action_cap_status": {
+      "tag": 33,
+      "type": "DailyActionCapStatus"
+    },
+    "onboarding_social_pack_unit_id": {
+      "tag": 34,
+      "type": "string"
+    },
+    "war": {
+      "tag": 35,
+      "type": "War"
+    },
+    "subscription_status": {
+      "tag": 36,
+      "type": "SubscriptionStatus"
+    },
+    "guild": {
+      "tag": 40,
+      "type": "Guild"
+    },
+    "invite_status": {
+      "tag": 41,
+      "type": "GuildInviteStatus"
+    },
+    "pvp_daily_rank_reward_preview": {
+      "tag": 44,
+      "type": "RankRewardPreview"
+    },
+    "using_tutorial_arena_opponents": {
+      "tag": 47,
+      "type": "bool"
+    },
+    "ship_pvp_daily_rank_reward_preview": {
+      "tag": 48,
+      "type": "RankRewardPreview"
+    },
+    "player_preference": {
+      "tag": 49,
+      "type": "PlayerPreference"
+    },
+    "territory_battle_status": {
+      "tag": 50,
+      "type": "TerritoryBattleStatus"
+    },
+    "identity_token": {
+      "tag": 51,
+      "type": "string"
+    },
+    "territory_war_status": {
+      "tag": 52,
+      "type": "TerritoryWarStatus"
+    },
+    "selected_player_title": {
+      "tag": 53,
+      "type": "PlayerTitle"
+    },
+    "unlocked_player_title": {
+      "tag": 54,
+      "type": "PlayerTitle"
+    },
+    "chat_disabled": {
+      "tag": 55,
+      "type": "bool"
+    },
+    "territory_tournament_status": {
+      "tag": 56,
+      "type": "TerritoryTournamentEventStatus"
+    },
+    "season_status": {
+      "tag": 57,
+      "type": "SeasonStatus"
+    },
+    "selected_player_portrait": {
+      "tag": 58,
+      "type": "PlayerPortrait"
+    },
+    "unlocked_player_portrait": {
+      "tag": 59,
+      "type": "PlayerPortrait"
+    },
+    "time_zone_change_status": {
+      "tag": 60,
+      "type": "TimeZoneChangeStatus"
+    },
+    "ea_account_connect_incentive": {
+      "tag": 61,
+      "type": "BucketItem"
+    },
+    "campaign_status": {
+      "tag": 62,
+      "type": "CampaignStatusUpdateMessage"
+    },
+    "highest_lifetime_season_league_rank": {
+      "tag": 63,
+      "type": "int32"
+    },
+    "scavenger_locked_item_id": {
+      "tag": 64,
+      "type": "string"
+    },
+    "completed_event": {
+      "tag": 66,
+      "type": "string"
+    },
+    "galactic_power_highwatermark": {
+      "tag": 67,
+      "type": "int32"
+    },
+    "skipped_tutorial": {
+      "tag": 68,
+      "type": "bool"
+    },
+    "reprompt_eula": {
+      "tag": 70,
+      "type": "bool"
+    },
+    "conquest_status": {
+      "tag": 71,
+      "type": "ConquestStatus"
+    },
+    "player_rating": {
+      "tag": 75,
+      "type": "PlayerRating"
+    },
+    "territory_defense": {
+      "tag": 76,
+      "type": "TerritoryDefense"
+    },
+    "datacron": {
+      "tag": 77,
+      "type": "Datacron"
+    },
+    "pending_mod_reroll": {
+      "tag": 78,
+      "type": "StatMod"
+    },
+    "reprompt_age_up_eula": {
+      "tag": 79,
+      "type": "bool"
+    },
+    "gift_recipient_counts": {
+      "tag": 80,
+      "type": "GiftRecipientCount"
+    },
+    "unresolved_recipient_choice": {
+      "tag": 81,
+      "type": "StoreTransactionRecipientChoiceOption"
+    },
+    "um_attribute": {
+      "tag": 82,
+      "type": "string"
+    },
+    "episode_status": {
+      "tag": 83,
+      "type": "EpisodeStatus"
+    },
+    "era_status": {
+      "tag": 84,
+      "type": "EraStatus"
+    },
+    "coliseum_participated_yesterday": {
+      "tag": 85,
+      "type": "bool"
+    },
+    "coliseum_participated_today": {
+      "tag": 86,
+      "type": "bool"
+    },
+    "overview_data": {
+      "tag": 87,
+      "type": "OverviewData"
+    },
+    "contribution_minutes_from_midnight_offset": {
+      "tag": 88,
+      "type": "int32"
+    }
+  },
+  "Player": {
+    "character_onboarding_complete": {
+      "tag": 1,
+      "type": "bool"
+    },
+    "xp": {
+      "tag": 2,
+      "type": "int32"
+    },
+    "level": {
+      "tag": 3,
+      "type": "int32"
+    },
+    "energy": {
+      "tag": 4,
+      "type": "Energy"
+    },
+    "name": {
+      "tag": 7,
+      "type": "string"
+    },
+    "amount_spent": {
+      "tag": 8,
+      "type": "int32"
+    },
+    "ship_onboarding_complete": {
+      "tag": 9,
+      "type": "bool"
+    },
+    "name_change_count": {
+      "tag": 10,
+      "type": "int32"
+    },
+    "free_name_change_count": {
+      "tag": 11,
+      "type": "int32"
+    },
+    "last_guild_join_time": {
+      "tag": 12,
+      "type": "int64"
+    },
+    "synergy_id": {
+      "tag": 16,
+      "type": "string"
+    },
+    "synergy_sell_id": {
+      "tag": 17,
+      "type": "string"
+    },
+    "ally_code": {
+      "tag": 19,
+      "type": "int64"
+    },
+    "eula_accepted": {
+      "tag": 20,
+      "type": "bool"
+    },
+    "age": {
+      "tag": 22,
+      "type": "YearMonth"
+    },
+    "local_time_zone_offset_minutes": {
+      "tag": 23,
+      "type": "sint32"
+    },
+    "debug_time_offset": {
+      "tag": 24,
+      "type": "sint64"
+    },
+    "last_login_time": {
+      "tag": 27,
+      "type": "int64"
+    },
+    "last_spent_time": {
+      "tag": 28,
+      "type": "int64"
+    },
+    "push_notes_enabled": {
+      "tag": 29,
+      "type": "bool"
+    },
+    "last_energy_bonus_time": {
+      "tag": 34,
+      "type": "EnergyBonusTime"
+    },
+    "country_code": {
+      "tag": 35,
+      "type": "string"
+    },
+    "join_time": {
+      "tag": 36,
+      "type": "int64"
+    },
+    "feature_suspended": {
+      "tag": 37,
+      "type": "GameFeature"
+    },
+    "force_squad_arena_on": {
+      "tag": 38,
+      "type": "bool"
+    },
+    "force_fleet_arena_on": {
+      "tag": 39,
+      "type": "bool"
+    },
+    "room_available": {
+      "tag": 40,
+      "type": "RoomData"
+    },
+    "eula_checkbox_required": {
+      "tag": 41,
+      "type": "bool"
+    },
+    "nucleus_id": {
+      "tag": 42,
+      "type": "string"
+    },
+    "ea_account_connect_incentive": {
+      "tag": 43,
+      "type": "bool"
+    },
+    "galactic_bundle_purchased": {
+      "tag": 44,
+      "type": "bool"
+    },
+    "pending_age_reset": {
+      "tag": 45,
+      "type": "bool"
+    },
+    "passes_coppa": {
+      "tag": 46,
+      "type": "bool"
+    },
+    "highest_conquest_joined": {
+      "tag": 47,
+      "type": "CampaignNodeDifficulty"
+    },
+    "highest_conquest_completed": {
+      "tag": 48,
+      "type": "CampaignNodeDifficulty"
+    },
+    "last_guild_starter": {
+      "tag": 49,
+      "type": "bool"
+    },
+    "has_passed_coppa": {
+      "tag": 50,
+      "type": "bool"
+    },
+    "has_failed_coppa": {
+      "tag": 51,
+      "type": "bool"
+    },
+    "adult": {
+      "tag": 52,
+      "type": "bool"
+    },
+    "returning_status": {
+      "tag": 53,
+      "type": "ReturningStatus"
+    }
+  },
+  "UpdateInboxRequest": {
+    "message_id": {
+      "tag": 1,
+      "type": "string"
+    },
+    "action": {
+      "tag": 2,
+      "type": "InboxAction"
+    },
+    "entitlement_id": {
+      "tag": 3,
+      "type": "int64"
+    },
+    "message_type": {
+      "tag": 4,
+      "type": "InboxMessageType"
+    }
+  },
+  "UpdateInboxResponse": {
+    "delta": {
+      "tag": 1,
+      "type": "InventoryDelta"
+    },
+    "ally": {
+      "tag": 2,
+      "type": "Ally"
+    },
+    "guild": {
+      "tag": 4,
+      "type": "Guild"
+    },
+    "player": {
+      "tag": 5,
+      "type": "Player"
+    },
+    "room_joined": {
+      "tag": 6,
+      "type": "RoomData"
+    }
+  },
+  "ClaimAllEnergyRewardsRequest": {},
+  "ClaimAllEnergyRewardsResponse": {
+    "player": {
+      "tag": 1,
+      "type": "Player"
+    }
+  },
+  "_enums": {
+    "EnergyType": {
+      "1": "PVE",
+      "2": "PVP",
+      "3": "SHIPPVE",
+      "4": "SHIPPVP",
+      "5": "CANTINAPVE",
+      "6": "MOD",
+      "7": "CONQUEST"
+    },
+    "InboxMessageType": {
+      "1": "BASIC",
+      "2": "ALLYREQUEST",
+      "3": "STORERECEIPT",
+      "4": "RANKREWARD",
+      "5": "GUILDINVITE",
+      "6": "JOINGUILDREQUEST",
+      "7": "GUILDRANKEDREWARD",
+      "8": "GUILDEXCHANGEAWARD",
+      "9": "GAMEEVENTREWARD",
+      "10": "TERRITORYBATTLECOMPLETEREWARD",
+      "11": "TERRITORYCOVERTMISSIONREWARD",
+      "12": "TERRITORYWARCOMPLETEREWARD",
+      "13": "CHATROOMINVITATION",
+      "14": "TERRITORYTOURNAMENTMATCHREWARD",
+      "15": "SEASONENDREWARD",
+      "16": "TERRITORYTOURNAMENTEVENTREWARD",
+      "17": "PARAMETERIZED",
+      "18": "TERRITORYTOURNAMENTEVENTSIGNUP",
+      "19": "TERRITORYTOURNAMENTDAILYRANKREWARD",
+      "20": "GENERICRECEIPT",
+      "21": "WEBSTOREPURCHASE",
+      "22": "WEBSTORERECEIPT",
+      "23": "GIFTENTITLEMENT",
+      "24": "GIFTRETURN",
+      "25": "GIFTINVALID",
+      "26": "EAAPPPURCHASE",
+      "27": "STORECOUPON",
+      "28": "ERASUMMARY",
+      "29": "SINGULARCAMPAIGNREWARD"
+    },
+    "ItemType": {
+      "1": "EMPTY",
+      "2": "UNIT",
+      "3": "CURRENCY",
+      "4": "BUCKET",
+      "6": "XP",
+      "7": "MATERIAL",
+      "8": "ENERGY",
+      "11": "EQUIPMENT",
+      "12": "EVENTKEYCARD",
+      "13": "POWERUPBUNDLE",
+      "14": "MYSTERYBOX",
+      "15": "STATMOD",
+      "16": "MYSTERYSTATMOD",
+      "17": "PLAYERTITLE",
+      "18": "STATMODPARAMETERIZED",
+      "19": "PLAYERPORTRAIT",
+      "20": "SEASONPOINT",
+      "21": "GALACTICBUNDLE",
+      "22": "CONQUESTPOINT",
+      "23": "ARTIFACT",
+      "24": "CONQUESTCONSUMABLE",
+      "25": "BATTLEPASS",
+      "26": "LOGINCALENDAR",
+      "27": "CONQUESTSTAMINAREGENREDUCE",
+      "28": "CONQUESTENERGYREGENREDUCE",
+      "29": "CONQUESTARTIFACTFREESWAPBONUS",
+      "30": "DATACRON",
+      "31": "EPISODEXP",
+      "32": "EPISODEPASS",
+      "33": "EPISODEPASSPLUS",
+      "34": "LIGHTSPEEDTOKEN",
+      "35": "LOANEDUNITERALEVELINCREASE"
+    },
+    "InboxAction": {
+      "0": "ACCEPT",
+      "1": "REJECT"
+    }
+  }
+}
