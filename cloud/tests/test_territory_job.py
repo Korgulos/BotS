@@ -60,3 +60,21 @@ def test_manual_collection_works_with_schedule_disabled_and_is_throttled(engine,
     assert run_due(engine,a['account_id'],collector=lambda *a:payload(),force=True)==[{'state':'ok','saved':True}]
     assert status(engine,a['account_id'])['enabled'] is False
     assert run_due(engine,a['account_id'],collector=lambda *a:(_ for _ in ()).throw(AssertionError()),force=True)==[]
+
+def test_collect_requests_full_guild_profiles_and_explicit_tb_stats():
+    from swgoh_cloud.territory_wire import collect
+    c=Codec();s={'capturedAt':db.now().isoformat(),'clientTime':1234567890,'authId':'id','authToken':'secret','expectedAllyCode':123}
+    guild=field(1,field(1,'guild-id'))+field(2,field(1,'member-id')+field(2,'Named member')+field(13,5000))
+    def handler(request):
+        envelope=fields(request.content);method=envelope[5][0].decode()
+        if method=='GetInitialData':body=field(2,field(19,123))+field(40,guild)
+        elif method=='GetGuild':
+            assert fields(envelope[6][0])[2]==[1]
+            body=field(1,guild)
+        elif method=='GetTerritoryMapStatuses':body=field(1,field(1,'map')+field(2,'t05D')+field(9,1))
+        elif method=='GetMapStats':
+            assert fields(envelope[6][0])[3]==[9];body=b''
+        else:raise AssertionError(method)
+        return httpx.Response(200,content=field(5,1)+field(4,body))
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:result=collect(s,client,db.now().isoformat())
+    assert result['members'][0]['name']=='Named member' and result['members'][0]['galacticPower']=='5000'

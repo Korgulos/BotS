@@ -54,3 +54,12 @@ def test_six_rounds_and_unknown_results():
     assert [phase_view(p,run,i)['rows'][0]['territoryPoints'] for i in range(1,7)]==list('123456')
     run['stats']['items'][0]['players']['items'][0]['covert']={'items':[{'zone':'z','result':'NEW_UNKNOWN'}]}
     assert phase_view(p,run,1)['rows'][0]['missions'][0]['completed'] is None
+
+def test_later_full_roster_repairs_anonymous_labels_without_inventing_historic_gp(engine):
+    c,admin,a,s=setup(engine);w={'Authorization':'Bearer '+s['ingest_token']};r={'Authorization':'Bearer '+a['read_token']}
+    old=payload();old['members'][0].update(name='',galacticPower='0')
+    for key,p in [('partial',old),('full',payload(2))]:
+        e=observation(event_key='repair:'+key,service='Inspector',operation='Snapshot',topic='territory',payload=p)
+        assert c.post('/v1/ingest',headers=w,json={'events':[e]}).status_code==200
+    row=c.get('/v1/territory/phases?phase=1',headers=r).json()[0]['payload']['rows'][0]
+    assert row['name']=='Mioni' and row['galacticPower'] is None and row['undeployedGP'] is None

@@ -100,7 +100,18 @@ def checkpoint(conn, event):
                 db.events.c.session == session, db.events.c.event_key == event_key).with_for_update()).mappings().first()
             baseline = payload
             if old and phase < current and old['payload'].get('rows'):
-                baseline = dict(payload, members=old['payload']['rows'], rosterObservedAt=old['payload'].get('rosterObservedAt'))
+                latest_members={m.get('memberKey'):m for m in payload.get('members',[]) if isinstance(m,dict)}
+                historical=[]
+                for member in old['payload']['rows']:
+                    member=dict(member)
+                    if not member.get('name'):
+                        fresh=latest_members.get(member.get('memberKey'),{})
+                        member['name']=fresh.get('name')
+                        # Older partial GetGuild replies supplied anonymous zero GP;
+                        # preserve real historical GP, but do not treat these placeholders as zero.
+                        if member.get('galacticPower')=='0':member['galacticPower']=None
+                    historical.append(member)
+                baseline = dict(payload, members=historical, rosterObservedAt=old['payload'].get('rosterObservedAt'))
             projected = phase_view(baseline, run, phase)
             # A later-phase server response includes explicit historical _round_N values.
             has_stats = bool(projected['columns']) and stats_at is not None

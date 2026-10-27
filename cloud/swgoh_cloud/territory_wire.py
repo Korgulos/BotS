@@ -78,12 +78,12 @@ def collect(session,client,now,codec=None):
     guild=c.child(initial,'InitialDataResponse','guild')
     profile=c.child(guild,'Guild','profile');guild_id=c.scalar(profile,'GuildProfile','id')
     if not guild_id:raise ValueError('Account has no guild')
-    response=c.call(client,session,'GetGuild',{'guild_id':guild_id})
+    response=c.call(client,session,'GetGuild',{'guild_id':guild_id,'include_recent_guild_activity_info':1})
     guild=c.child(response,'GetGuildResponse','guild')
     actual_id=c.scalar(c.child(guild,'Guild','profile'),'GuildProfile','id')
     if actual_id!=guild_id:raise ValueError('Guild mismatch')
     members=c.members(guild);names={m['memberKey']:m['name'] for m in members}
-    if not members:raise ValueError('Empty guild roster')
+    if not members or any(not m['name'] for m in members):raise ValueError('Incomplete guild roster')
     statuses=c.call(client,session,'GetTerritoryMapStatuses',{'event_type':9})
     runs=[]
     for ended,fieldname in [(False,'territory_battle_status'),(True,'territory_battle_result')]:
