@@ -215,6 +215,8 @@ def create_app(settings: Settings, engine=None):
 
     from .territory import install as install_territory
     install_territory(app, engine, reader)
+    from .public_territory import install as install_public_territory
+    install_public_territory(app,engine)
 
     @app.get("/v1/battles")
     def list_battles(who=Depends(reader), limit: int = Query(50, ge=1, le=200)):

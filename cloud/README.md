@@ -358,3 +358,21 @@ systemctl --user start swgoh-maintenance.service
 Credentials and raw inbox IDs are not written to receipts, panel responses or
 service logs. The protected local `.state/maintenance-last.local.json` records
 the last result, while the system journal records each timer execution.
+
+### Public guild TB table
+
+`/tb` serves a token-free, read-only guild table; `/public/tb/phases` returns
+only the allowlisted TB table fields for `SWGOH_PUBLIC_TB_ACCOUNT`. This explicit
+server-side account setting is required (404 when disabled); URL parameters
+cannot select another account. Public records contain member names and TB
+statistics, but omit account/source IDs, internal member keys, event metadata,
+inbox, inventory and session credentials. The page sends only public GET reads;
+phase selection, sorting and details are local presentation controls. Opening
+it never triggers a SWGoH request. All existing action routes still require a
+control key. Both the page and data response request no search indexing.
+
+Events are ordered by their start date, newest first. This uses the actual
+server start when available, otherwise the existing marked estimate from a
+phase end. Public presentation is copied from the shared table block in
+`panel/app.js`; the JS test checks that the blocks match so later table changes
+must also update `panel/public-tb.js`.
