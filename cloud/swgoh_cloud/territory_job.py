@@ -1,4 +1,4 @@
-"""Hourly, account-bound, read-only TB collection. No credential renewal or game actions."""
+"""Account-bound read-only TB collection with optional managed EA session renewal."""
 import json,os
 from datetime import datetime,timedelta,timezone
 from types import SimpleNamespace
@@ -10,7 +10,11 @@ from .territory import checkpoint
 from .territory_wire import collect,SessionRejected
 
 SESSION='territory-schedule-v1';EVENT='hourly'
-def session_config():
+def session_config(engine=None,account=None):
+    if engine is not None and account is not None:
+        from .ea_auth import session
+        managed=session(engine,account)
+        if managed:return managed
     try:
         s=json.loads(os.environ.get('SWGOH_TERRITORY_SESSION',''))
         expiry=datetime.fromisoformat(s['_expiresAt']);captured=datetime.fromisoformat(s['capturedAt'])
@@ -30,7 +34,7 @@ def configure(engine,account,enabled):
             row=c.execute(select(db.events).where(db.events.c.account_id==account,db.events.c.session==SESSION,db.events.c.event_key==EVENT).with_for_update()).mappings().first()
             if row:
                 p=dict(row['payload'],enabled=False,state='disabled');c.execute(db.events.update().where(db.events.c.id==row['id']).values(payload=p));return p
-    s=session_config()
+    s=session_config(engine,account)
     if s['_accountId']!=account:raise HTTPException(403,'TB_ACCOUNT_MISMATCH')
     now=db.now()
     with engine.begin() as c:
@@ -69,11 +73,14 @@ def run_due(engine,account=None,collector=collect,client_factory=httpx.Client,fo
     for row,p in jobs:
         snapshot=None
         try:
-            s=session_config()
+            s=session_config(engine,row['account_id'])
             if s['_accountId']!=row['account_id'] or s['_sourceId']!=row['source_id']:raise ValueError('Session binding')
             with client_factory(timeout=20,trust_env=False,follow_redirects=False) as client:snapshot=collector(s,client,db.now().isoformat())
             p.update(state='ok',last_success=db.now().isoformat(),last_error=None)
-        except SessionRejected:p.update(state='session_rejected',enabled=False,last_error='SESSION_REJECTED')
+        except SessionRejected:
+            from .ea_auth import invalidate
+            invalidate(engine,row['account_id'])
+            p.update(state='session_rejected',enabled=False,last_error='SESSION_REJECTED')
         except HTTPException:p.update(state='session_unavailable',last_error='SESSION_UNAVAILABLE_OR_EXPIRED')
         except Exception as e:p.update(state='failed',last_error=type(e).__name__) # Never include credential-bearing error text.
         p['lease_until']=None
@@ -90,6 +97,17 @@ def run_due(engine,account=None,collector=collect,client_factory=httpx.Client,fo
 def install(app,engine,reader,controller):
     from .models import StrictModel
     class Schedule(StrictModel):enabled:bool
+    class Renew(StrictModel):game_closed:bool
+    @app.get('/v1/territory/session')
+    def session_status(who=Depends(reader)):
+        from .ea_auth import status
+        return status(engine,who['account_id'])
+    @app.post('/v1/territory/session/renew')
+    def renew_session(data:Renew,who=Depends(controller)):
+        from .ea_auth import session,status
+        if not data.game_closed:raise HTTPException(409,'Close the game before renewal')
+        if session(engine,who['account_id'],force=True) is None:raise HTTPException(409,'EA_AUTH_NOT_CONFIGURED')
+        return status(engine,who['account_id'])
     @app.get('/v1/territory/collection')
     def get_status(who=Depends(reader)):return status(engine,who['account_id'])
     @app.post('/v1/territory/collection')

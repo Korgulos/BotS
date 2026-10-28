@@ -193,4 +193,20 @@ CREATE TABLE snapshots (
 
 ;
 
+
+CREATE TABLE direct_auth_sessions (
+	account_id VARCHAR(36) NOT NULL,
+	source_id VARCHAR(36) NOT NULL,
+	seed_id VARCHAR(64) NOT NULL,
+	sealed TEXT NOT NULL,
+	state VARCHAR(40) NOT NULL,
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+	retry_after TIMESTAMP WITH TIME ZONE,
+	PRIMARY KEY (account_id),
+	FOREIGN KEY(account_id) REFERENCES accounts (id),
+	FOREIGN KEY(source_id) REFERENCES sources (id)
+)
+
+;
+
 INSERT INTO schema_version(version) VALUES (2) ON CONFLICT DO NOTHING;

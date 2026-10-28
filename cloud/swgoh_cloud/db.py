@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import (MetaData, Table, Column, String, Integer, Boolean, DateTime,
-                        ForeignKey, UniqueConstraint, Index, JSON, create_engine, text)
+                        ForeignKey, UniqueConstraint, Index, JSON, Text, create_engine, text)
 from sqlalchemy.dialects.postgresql import JSONB
 
 meta = MetaData()
@@ -62,6 +62,14 @@ battles = Table("battles", meta,
     Column("battle_type", String(80)), Column("seed", String(32)), Column("outcome", String(80)),
     Column("record_count", Integer), Column("records_shown", Integer), Column("truncated", Boolean, nullable=False))
 version = Table("schema_version", meta, Column("version", Integer, primary_key=True))
+auth_sessions = Table("direct_auth_sessions", meta,
+    Column("account_id", ForeignKey("accounts.id"), primary_key=True),
+    Column("source_id", ForeignKey("sources.id"), nullable=False),
+    Column("seed_id", String(64), nullable=False),
+    Column("sealed", Text, nullable=False),
+    Column("state", String(40), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+    Column("retry_after", DateTime(timezone=True)))
 agents = Table("bridge_status", meta,
     Column("source_id", ForeignKey("sources.id"), primary_key=True),
     Column("session", String(64), nullable=False), Column("last_seen", DateTime(timezone=True), nullable=False),

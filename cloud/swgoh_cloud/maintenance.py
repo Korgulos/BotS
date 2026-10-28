@@ -90,7 +90,7 @@ def rewards(engine,s,client,codec=None):
     return dict(inbox=inbox,energy=energy,refreshed=True,state='uncertain' if inbox['uncertain'] or energy['state']=='uncertain' else 'ok')
 
 def run(engine,who,request_id,collector=rewards):
-    try:s=session_config()
+    try:s=session_config(engine,who['account_id'])
     except HTTPException:return {'state':'session_unavailable','code':'SESSION_EXPIRED_OR_MISSING'}
     if s['_accountId']!=who['account_id']:raise HTTPException(403,'Account mismatch')
     account=s['_accountId'];now=db.now();event_key='run:'+str(request_id)

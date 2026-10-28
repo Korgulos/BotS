@@ -376,3 +376,38 @@ server start when available, otherwise the existing marked estimate from a
 phase end. Public presentation is copied from the shared table block in
 `panel/app.js`; the JS test checks that the blocks match so later table changes
 must also update `panel/public-tb.js`.
+
+### Managed EA sessions (demand-driven)
+
+The existing API can now renew its TB/maintenance session without the desktop.
+`SWGOH_EA_LOGIN_SEED` is a Fernet-encrypted bootstrap document; the separate
+`SWGOH_AUTH_ENCRYPTION_KEY` is a private Render secret. Neither belongs in Git or
+Blueprint values. The seed binds one account, source and expected ally code to
+verified client settings and remembered EA cookies. It contains no cached game
+session. Provision these secrets only after a user completes the EA email-code
+login; no account password is stored.
+
+`direct_auth_sessions` stores encrypted rotated cookies and the verified cached
+game session, independently of public observations. The existing startup
+migration creates this additive table. Keep the encryption key across deploys;
+rotating it requires reseeding. A changed seed ID explicitly replaces the prior
+bootstrap; the same seed ID never overwrites rotated cookies on restart.
+
+On demand, the server requests an EA JWS token, performs `DoAuthNucleus` with
+DONT_BIND and create-player=false, consumes its bootstrap request token with
+GetInitialData, verifies the expected ally code, and verifies unsequenced Ping.
+Cached sessions last at most three hours and renew before expiry. Account locks
+serialize renewals; recent online bridges and active transactions block login.
+Authentication failures are persisted with a ten-minute backoff and are not
+retried inside the same request. A rejected game session invalidates its cache.
+EA may still revoke remembered login or request an interactive challenge.
+
+Read/control `GET /v1/territory/session` returns only state and timestamps.
+Control `POST /v1/territory/session/renew` requires `{"game_closed":true}` and
+returns only public status; immediate force repeats use the recent cached result.
+TB collection and maintenance obtain managed sessions automatically. Existing
+manual environment sessions remain the fallback when managed EA login is not
+configured for the requested account. Purchase session configuration is unchanged.
+
+This is demand-driven renewal, not an hourly scheduler. With the desktop off,
+use the server's control endpoints. No paid cron or new hosting is provisioned.
