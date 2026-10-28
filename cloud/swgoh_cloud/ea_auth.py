@@ -110,6 +110,8 @@ def session(engine,account,force=False,client_factory=httpx.Client):
         value=unseal(row['sealed']) if row and row['seed_id']==seed['seed_id'] else seed
         if value['account_id']!=account or value['source_id']!=seed['source_id']:raise HTTPException(409,'EA_ACCOUNT_MISMATCH')
         cached=value.get('session');now=db.now()
+        challenge=value.get('challenge')
+        if challenge and datetime.fromisoformat(challenge['expires_at'])>now:raise HTTPException(409,'EA_PIN_PENDING')
         if cached and not force and datetime.fromisoformat(cached['_expiresAt'])>now+timedelta(minutes=5):return cached
         if force and cached and row and row['updated_at']>now-timedelta(seconds=60):return cached
         if row and row['retry_after'] and row['retry_after']>now:raise HTTPException(409,'EA_AUTH_RETRY_LATER')

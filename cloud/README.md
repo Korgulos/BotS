@@ -411,3 +411,21 @@ configured for the requested account. Purchase session configuration is unchange
 
 This is demand-driven renewal, not an hourly scheduler. With the desktop off,
 use the server's control endpoints. No paid cron or new hosting is provisioned.
+
+### Remote email-PIN recovery
+
+Open `/ea-login` on the existing HTTPS service, including from a phone. Unlock
+with the existing control key or its JSON file, enter the EA email, confirm the
+game is closed, request a code, and submit the newest six-digit PIN. Read keys
+cannot use recovery. The page keeps its control key only in memory and does not
+store the PIN in browser storage. Its link contains no credentials.
+
+`GET /v1/ea-login` reports account-scoped recovery state. Control-only
+`POST /v1/ea-login/start` requests an EA code with a one-minute account cooldown;
+`POST /v1/ea-login/finish` consumes a ten-minute challenge. Challenge cookies and
+form fields are encrypted in the existing private auth table, so recovery can
+continue across service restarts. A durable pre-send reservation prevents replay
+after an uncertain PIN submission. The PIN itself is never persisted. Successful
+EA authentication obtains a fresh JWS token and verifies the expected SWGoH ally
+code before replacing saved credentials. Failed or mismatched recovery preserves
+the existing verified session. Additional EA challenges fail closed.

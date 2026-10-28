@@ -75,6 +75,12 @@ def create_app(settings: Settings, engine=None):
             "Referrer-Policy": "no-referrer",
             "X-Content-Type-Options": "nosniff",
         })
+    @app.get("/ea-login", include_in_schema=False)
+    def ea_login_page():
+        return FileResponse(panel / "ea-login.html", headers={
+            "Cache-Control":"no-store", "Referrer-Policy":"no-referrer",
+            "Content-Security-Policy":"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+            "X-Content-Type-Options":"nosniff"})
     bearer = HTTPBearer(auto_error=False)
 
     @app.exception_handler(RequestValidationError)
@@ -259,6 +265,8 @@ def create_app(settings: Settings, engine=None):
     install_direct_account(app,engine,controller)
     from .territory_job import install as install_territory_job
     install_territory_job(app,engine,reader,controller)
+    from .ea_login import install as install_ea_login
+    install_ea_login(app,engine,controller)
     from .maintenance import install as install_maintenance
     install_maintenance(app,engine,reader,controller)
     from .direct_purchases import install as install_direct_purchases
