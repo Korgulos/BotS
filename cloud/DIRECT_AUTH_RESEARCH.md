@@ -1,7 +1,8 @@
 # Direct EA login research — 2026-10-28
 
 Goal: keep the existing cloud service connected to SWGoH while the desktop is off.
-No unattended login or renewal has been deployed yet.
+Managed silent login is deployed on the existing Render service. Server-side
+renewal and read-only TB collection were verified on 2026-10-28.
 
 ## Verified locally
 
@@ -41,8 +42,8 @@ login attempts. A passive inspector endpoint `/api/session/auth-export` is
 prepared and compiled in the ignored inspector work area. It requires the local
 inspector key, same Origin, POST with `confirmed=true`, and a successful observed
 login within ten minutes. It is separate from ordinary session export and bridge
-observations, so auth research data is not uploaded as telemetry. The installed
-DLL has a `.pre-auth-research.bak` backup.
+observations, so auth research data is not uploaded as telemetry. The temporary installed DLL was restored from its `.pre-auth-research.bak`
+backup after the successful capture.
 
 After successful standalone game login, verify expected ally code with initial
 account data and perform a read-only TB collection. Then test renewal from Render,
@@ -65,3 +66,14 @@ expected ally code, and an unsequenced successful Ping. Thus standalone game
 login has now been verified locally. Earlier opaque-token failures above are
 historical, not a current blocker. `ea_auth.py` implements the verified flow;
 see README for encrypted persistence and demand-driven renewal limitations.
+
+
+## Render verification
+
+The deployed API started with no cached managed game session. Its control-only
+renewal endpoint performed EA JWS login, verified the account, and returned ready.
+A subsequent TB collection returned `state=ok, saved=true`; phase history returned
+27 records. Bootstrap secrets and the encryption key were transferred only after
+explicit user approval for the named existing Render service. This proves
+operation from Render without the desktop, not guaranteed two-week EA cookie
+validity. Renewal remains demand-driven; no hourly server infrastructure was added.
