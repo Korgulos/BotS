@@ -19,7 +19,17 @@ def offline(c,account):
     live=c.execute(select(db.agents.c.source_id).join(db.sources,db.sources.c.id==db.agents.c.source_id).where(db.sources.c.account_id==account,db.agents.c.online.is_(True),db.agents.c.last_seen>db.now()-timedelta(seconds=30))).first()
     if live:raise HTTPException(409,'Direktna kupovina zahteva ugašenu igru; sačekaj prekid bridge veze')
 def session(c,who):
-    s=config(who)
+    from . import ea_auth
+    seed=ea_auth.seed_config()
+    if seed and seed['account_id']==who['account_id']:
+        row=c.execute(select(db.auth_sessions).where(db.auth_sessions.c.account_id==who['account_id'])).mappings().first()
+        value=ea_auth.unseal(row['sealed']) if row and row['seed_id']==seed['seed_id'] else {}
+        if value.get('challenge') and datetime.fromisoformat(value['challenge']['expires_at'])>db.now():raise HTTPException(409,'Završi EA PIN prijavu pre kupovine')
+        cached=value.get('session')
+        if not cached or datetime.fromisoformat(cached['_expiresAt'])<=db.now():raise HTTPException(409,'Potrebno je obnoviti serversku sesiju pre provere cene')
+        if cached['_accountId']!=who['account_id'] or cached['_sourceId']!=seed['source_id']:raise HTTPException(409,'Pogrešna serverska sesija')
+        s={**cached,'_allowPurchases':True,'_testId':hashlib.sha256((cached['authId']+':'+cached['authToken']).encode()).hexdigest()[:32]}
+    else:s=config(who)
     if s.get('_allowPurchases') is not True:raise HTTPException(409,'Direktna sesija nema odobren pristup kupovinama')
     if not c.execute(select(db.sources.c.id).where(db.sources.c.id==s['_sourceId'],db.sources.c.account_id==who['account_id'])).first():raise HTTPException(409,'Izvor direktne sesije nije potvrđen')
     invalid=c.execute(select(db.purchases.c.id).where(db.purchases.c.account_id==who['account_id'],db.purchases.c.session==session_id(s),db.purchases.c.code=='DIRECT_SESSION_REJECTED')).first()
@@ -30,7 +40,18 @@ def status(c,who):
     try:
         s=session(c,who);offline(c,who['account_id'])
         return {'available':True,'source_id':s['_sourceId'],'expires_at':s['_expiresAt'],'currencies':sorted(ALLOWED),'reason':'Direktno · bez kristala · igra ugašena'}
-    except HTTPException as e:return {'available':False,'reason':e.detail}
+    except HTTPException as e:
+        from . import ea_auth
+        seed=ea_auth.seed_config()
+        if seed and seed['account_id']==who['account_id']:
+            try:
+                offline(c,who['account_id'])
+                row=c.execute(select(db.auth_sessions).where(db.auth_sessions.c.account_id==who['account_id'])).mappings().first()
+                value=ea_auth.unseal(row['sealed']) if row else {}
+                if (value.get('challenge') and datetime.fromisoformat(value['challenge']['expires_at'])>db.now()) or row and row['retry_after'] and row['retry_after']>db.now():return {'available':False,'reason':e.detail}
+                return {'available':True,'renewable':True,'source_id':seed['source_id'],'expires_at':None,'currencies':sorted(ALLOWED),'reason':'Serverska sesija se obnavlja pre provere cene'}
+            except HTTPException as blocked:return {'available':False,'reason':blocked.detail}
+        return {'available':False,'reason':e.detail}
 
 class DirectPurchases:
     def __init__(self,engine):self.engine=engine
@@ -59,11 +80,18 @@ class DirectPurchases:
     def update(self,c,row,**values):
         values['updated_at']=db.now();c.execute(db.purchases.update().where(db.purchases.c.id==row['id']).values(**values));row.update(values);return row
     def finish(self,identifier,who,state,code):
+        if code=='DIRECT_SESSION_REJECTED':
+            from .ea_auth import invalidate
+            invalidate(self.engine,who['account_id'])
         with self.engine.begin() as c:
             row=self.own(c,identifier,who)
             if row['state'] in {'succeeded','failed','cancelled','expired'}:return row
             return self.update(c,row,state=state,code=code)
     def prepare(self,data,who):
+        from .ea_auth import session as managed_session
+        # Renewal happens before the durable purchase reservation. Confirmation
+        # still requires exactly the same session that produced the quote.
+        managed_session(self.engine,who['account_id'])
         with self.engine.begin() as c:
             c.execute(select(db.accounts.c.id).where(db.accounts.c.id==who['account_id']).with_for_update()).one()
             prior=c.execute(select(db.purchases).where(db.purchases.c.account_id==who['account_id'],db.purchases.c.request_id==str(data.request_id))).mappings().first()

@@ -271,6 +271,8 @@ def create_app(settings: Settings, engine=None):
     install_maintenance(app,engine,reader,controller)
     from .direct_purchases import install as install_direct_purchases
     install_direct_purchases(app,engine,controller)
+    from .shipments import install as install_shipments
+    install_shipments(app,engine,controller)
     from .inventory import install as install_inventory
     install_inventory(app,engine,reader,controller)
     from .inbox_automation import install as install_inbox_automation

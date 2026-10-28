@@ -407,7 +407,8 @@ Control `POST /v1/territory/session/renew` requires `{"game_closed":true}` and
 returns only public status; immediate force repeats use the recent cached result.
 TB collection and maintenance obtain managed sessions automatically. Existing
 manual environment sessions remain the fallback when managed EA login is not
-configured for the requested account. Purchase session configuration is unchanged.
+configured for the requested account. Purchases use the same verified managed session when configured, with the existing
+explicit price confirmation and all currency/mod restrictions.
 
 This is demand-driven renewal, not an hourly scheduler. With the desktop off,
 use the server's control endpoints. No paid cron or new hosting is provisioned.
@@ -429,3 +430,19 @@ after an uncertain PIN submission. The PIN itself is never persisted. Successful
 EA authentication obtains a fresh JWS token and verifies the expected SWGoH ally
 code before replacing saved credentials. Failed or mismatched recovery preserves
 the existing verified session. Additional EA challenges fail closed.
+
+
+### Server shipment refresh
+
+The shop's **Osveži ponude sa servera** button calls control-only
+`POST /v1/shipments/refresh`. This is a GetInitialData read; it never pays for
+refreshing a shop. It verifies account identity, saves current known offers and
+best-effort inventory, and applies a 15-second read cooldown. Existing snapshots
+are retained when the upstream read or account check fails. Mod eligibility still
+requires verified five-star metadata and fresh positive Speed secondary stats.
+
+Purchase availability reads the managed encrypted cache without logging in during
+panel polling. If renewal is needed, price preparation renews before reserving
+the purchase. Session IDs derive from the current game credentials, so an old
+quote cannot be committed after reauthentication. The temporary legacy purchase
+secret is used only when managed EA login is not configured for that account.
