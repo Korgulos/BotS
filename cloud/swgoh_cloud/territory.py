@@ -9,6 +9,7 @@ from . import db
 KEY = re.compile(r'^[0-9a-f]{32}$')
 ROUND = re.compile(r'_round_([1-6])$')
 ZONE = re.compile(r'_phase0?([1-6])_')
+PLACEHOLDER_NAME = re.compile(r'(?:član|clan|member)\s+\d+', re.IGNORECASE)
 RESULTS = {'UNATTEMPTED': (False, False), 'ATTEMPTEDFAILED': (True, False), 'ATTEMPTEDSUCCEEDED': (True, True)}
 
 def integer(value):
@@ -104,9 +105,12 @@ def checkpoint(conn, event):
                 historical=[]
                 for member in old['payload']['rows']:
                     member=dict(member)
-                    if not member.get('name'):
+                    name = member.get('name') or ''
+                    if not name or PLACEHOLDER_NAME.fullmatch(name):
                         fresh=latest_members.get(member.get('memberKey'),{})
-                        member['name']=fresh.get('name')
+                        fresh_name = fresh.get('name') or ''
+                        if fresh_name and not PLACEHOLDER_NAME.fullmatch(fresh_name):
+                            member['name'] = fresh_name
                         # Older partial GetGuild replies supplied anonymous zero GP;
                         # preserve real historical GP, but do not treat these placeholders as zero.
                         if member.get('galacticPower')=='0':member['galacticPower']=None
